@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -315,6 +317,11 @@ func TestClient_TokenCaching(t *testing.T) {
 // the cached token has expired.
 // Note: This test is limited by the difficulty of mocking HTTPS URLs in tests.
 func TestClient_TokenExpired(t *testing.T) {
+	// Isolate the HOME directory so the disk cache path for clientID "test"
+	// does not accidentally pick up a real ~/.grepr/auth/test-m2m.json file
+	// from the developer's machine, which would cause a spurious cache hit.
+	t.Setenv("HOME", t.TempDir())
+
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
@@ -485,6 +492,344 @@ func TestCalculateBackoff(t *testing.T) {
 				t.Errorf("calculateBackoff(%d) = %v, expected %v", tt.attempt, got, tt.expected)
 			}
 		})
+	}
+}
+
+// writeDiskToken is a test helper that pre-populates the disk cache for a client
+// without going through saveDiskToken, so tests can set up arbitrary initial states.
+func writeDiskToken(t *testing.T, c *Client, td cachedTokenData) {
+	t.Helper()
+	path, err := c.diskCachePath()
+	if err != nil {
+		t.Fatalf("diskCachePath: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	data, err := json.Marshal(td)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+}
+
+// newTLSAuth0Server starts a TLS httptest server that responds to /oauth/token
+// with the given access token, returning a configured Client pointed at it.
+// Using TLS matches the https:// scheme that FetchToken constructs, avoiding
+// URL scheme mismatch errors that plague plain httptest.NewServer-based tests.
+func newTLSAuth0Server(t *testing.T, accessToken string, callCount *int) (*Client, *httptest.Server) {
+	t.Helper()
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if callCount != nil {
+			*callCount++
+		}
+		resp := OAuthTokenResponse{
+			AccessToken: accessToken,
+			TokenType:   "Bearer",
+			ExpiresIn:   86400,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+
+	c := &Client{
+		httpClient:   server.Client(),
+		auth0Domain:  server.URL[8:], // strip "https://"
+		clientID:     "test-client",
+		clientSecret: "test-secret",
+	}
+	return c, server
+}
+
+// TestDiskCachePath verifies the cache file path uses the client ID as the filename stem
+// and is rooted under ~/.grepr/auth/.
+func TestDiskCachePath(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("HOME", tempDir)
+
+	c := &Client{clientID: "my-client-id"}
+
+	got, err := c.diskCachePath()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := filepath.Join(tempDir, ".grepr", "auth", "my-client-id-m2m.json")
+	if got != expected {
+		t.Errorf("expected path %q, got %q", expected, got)
+	}
+}
+
+// TestLoadDiskToken_CacheMiss verifies that loadDiskToken returns nil (not an error)
+// when the cache file does not exist.
+func TestLoadDiskToken_CacheMiss(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	c := &Client{clientID: "test-client"}
+
+	td, err := c.loadDiskToken()
+	if err != nil {
+		t.Fatalf("expected nil error on cache miss, got: %v", err)
+	}
+	if td != nil {
+		t.Errorf("expected nil token on cache miss, got %+v", td)
+	}
+}
+
+// TestLoadDiskToken_CacheHit verifies that loadDiskToken correctly reads and decodes
+// a token previously written to the cache file.
+func TestLoadDiskToken_CacheHit(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	c := &Client{clientID: "test-client"}
+
+	expected := cachedTokenData{
+		AccessToken: "disk-token",
+		TokenType:   "Bearer",
+		ExpiresIn:   86400,
+		ExpiresAt:   time.Now().Add(time.Hour).UnixMilli(),
+	}
+	writeDiskToken(t, c, expected)
+
+	got, err := c.loadDiskToken()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected token data, got nil")
+	}
+	if *got != expected {
+		t.Errorf("expected token %+v, got %+v", expected, *got)
+	}
+}
+
+// TestLoadDiskToken_InvalidJSON verifies that loadDiskToken returns an error
+// when the cache file contains malformed JSON, rather than silently succeeding.
+func TestLoadDiskToken_InvalidJSON(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("HOME", tempDir)
+
+	c := &Client{clientID: "test-client"}
+
+	cacheDir := filepath.Join(tempDir, ".grepr", "auth")
+	if err := os.MkdirAll(cacheDir, 0700); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	cachePath := filepath.Join(cacheDir, "test-client-m2m.json")
+	if err := os.WriteFile(cachePath, []byte("not-valid-json{{{"), 0600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	_, err := c.loadDiskToken()
+	if err == nil {
+		t.Error("expected error for invalid JSON, got nil")
+	}
+}
+
+// TestSaveDiskToken verifies that saveDiskToken creates the cache directory and file
+// with the expected content and restricted permissions (0700 dir, 0600 file).
+func TestSaveDiskToken(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("HOME", tempDir)
+
+	c := &Client{clientID: "test-client"}
+
+	td := cachedTokenData{
+		AccessToken: "saved-token",
+		TokenType:   "Bearer",
+		ExpiresIn:   86400,
+		ExpiresAt:   time.Now().Add(time.Hour).UnixMilli(),
+	}
+
+	if err := c.saveDiskToken(td); err != nil {
+		t.Fatalf("unexpected error saving token: %v", err)
+	}
+
+	cachePath := filepath.Join(tempDir, ".grepr", "auth", "test-client-m2m.json")
+
+	data, err := os.ReadFile(cachePath)
+	if err != nil {
+		t.Fatalf("failed to read saved cache file: %v", err)
+	}
+	var loaded cachedTokenData
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		t.Fatalf("failed to decode saved token: %v", err)
+	}
+	if loaded != td {
+		t.Errorf("saved token mismatch: expected %+v, got %+v", td, loaded)
+	}
+
+	fileInfo, err := os.Stat(cachePath)
+	if err != nil {
+		t.Fatalf("failed to stat cache file: %v", err)
+	}
+	if fileInfo.Mode().Perm() != 0600 {
+		t.Errorf("expected file permissions 0600, got %04o", fileInfo.Mode().Perm())
+	}
+
+	dirInfo, err := os.Stat(filepath.Dir(cachePath))
+	if err != nil {
+		t.Fatalf("failed to stat cache directory: %v", err)
+	}
+	if dirInfo.Mode().Perm() != 0700 {
+		t.Errorf("expected directory permissions 0700, got %04o", dirInfo.Mode().Perm())
+	}
+}
+
+// TestSaveDiskToken_CreatesDirectoryIfMissing verifies that saveDiskToken creates
+// the full ~/.grepr/auth/ directory hierarchy even when it does not yet exist.
+func TestSaveDiskToken_CreatesDirectoryIfMissing(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	c := &Client{clientID: "test-client"}
+
+	td := cachedTokenData{AccessToken: "token", ExpiresAt: time.Now().Add(time.Hour).UnixMilli()}
+
+	// Directory does not exist yet — saveDiskToken must create it
+	if err := c.saveDiskToken(td); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	loaded, err := c.loadDiskToken()
+	if err != nil || loaded == nil {
+		t.Fatalf("expected to read back saved token: err=%v, loaded=%v", err, loaded)
+	}
+	if loaded.AccessToken != "token" {
+		t.Errorf("expected access token %q, got %q", "token", loaded.AccessToken)
+	}
+}
+
+// TestGetToken_ValidDiskToken_SkipsAuth0 verifies that when the in-memory token is
+// expired but the disk cache holds a still-valid token, getToken returns the disk token
+// without making any Auth0 requests.
+func TestGetToken_ValidDiskToken_SkipsAuth0(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	auth0CallCount := 0
+	c, server := newTLSAuth0Server(t, "auth0-token", &auth0CallCount)
+	defer server.Close()
+
+	c.accessToken = "expired-memory-token"
+	c.tokenExpiry = time.Now().Add(-time.Hour)
+
+	diskToken := cachedTokenData{
+		AccessToken: "valid-disk-token",
+		TokenType:   "Bearer",
+		ExpiresIn:   86400,
+		ExpiresAt:   time.Now().Add(time.Hour).UnixMilli(),
+	}
+	writeDiskToken(t, c, diskToken)
+
+	token, err := c.getToken(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token != "valid-disk-token" {
+		t.Errorf("expected disk token %q, got %q", "valid-disk-token", token)
+	}
+	if auth0CallCount != 0 {
+		t.Errorf("expected zero Auth0 calls, got %d", auth0CallCount)
+	}
+}
+
+// TestGetToken_ValidDiskToken_PopulatesInMemoryCache verifies that after a disk cache
+// hit the in-memory fields are updated, so a subsequent getToken call skips the disk.
+func TestGetToken_ValidDiskToken_PopulatesInMemoryCache(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	c, server := newTLSAuth0Server(t, "auth0-token", nil)
+	defer server.Close()
+
+	diskToken := cachedTokenData{
+		AccessToken: "valid-disk-token",
+		ExpiresAt:   time.Now().Add(time.Hour).UnixMilli(),
+	}
+	writeDiskToken(t, c, diskToken)
+
+	if _, err := c.getToken(context.Background()); err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+
+	// Remove the disk cache to prove the second call uses only in-memory state
+	path, _ := c.diskCachePath()
+	_ = os.Remove(path)
+
+	token, err := c.getToken(context.Background())
+	if err != nil {
+		t.Fatalf("second call: %v", err)
+	}
+	if token != "valid-disk-token" {
+		t.Errorf("expected in-memory token %q after disk removal, got %q", "valid-disk-token", token)
+	}
+}
+
+// TestGetToken_ExpiredDiskToken_CallsAuth0AndSavesDiskToken verifies that when both
+// the in-memory and disk tokens are expired, getToken calls Auth0 and writes the
+// new token back to disk for subsequent processes to reuse.
+func TestGetToken_ExpiredDiskToken_CallsAuth0AndSavesDiskToken(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	auth0CallCount := 0
+	c, server := newTLSAuth0Server(t, "fresh-from-auth0", &auth0CallCount)
+	defer server.Close()
+
+	c.accessToken = "expired-memory-token"
+	c.tokenExpiry = time.Now().Add(-time.Hour)
+
+	expiredDisk := cachedTokenData{
+		AccessToken: "expired-disk-token",
+		ExpiresAt:   time.Now().Add(-time.Hour).UnixMilli(),
+	}
+	writeDiskToken(t, c, expiredDisk)
+
+	token, err := c.getToken(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token != "fresh-from-auth0" {
+		t.Errorf("expected Auth0 token %q, got %q", "fresh-from-auth0", token)
+	}
+	if auth0CallCount != 1 {
+		t.Errorf("expected exactly 1 Auth0 call, got %d", auth0CallCount)
+	}
+
+	saved, err := c.loadDiskToken()
+	if err != nil || saved == nil {
+		t.Fatalf("expected refreshed token on disk: err=%v, saved=%v", err, saved)
+	}
+	if saved.AccessToken != "fresh-from-auth0" {
+		t.Errorf("expected fresh token persisted to disk, got %q", saved.AccessToken)
+	}
+}
+
+// TestGetToken_NoDiskCache_CallsAuth0AndSavesDiskToken verifies the cold-start path:
+// no in-memory token and no disk cache file → Auth0 is called and result is persisted.
+func TestGetToken_NoDiskCache_CallsAuth0AndSavesDiskToken(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	auth0CallCount := 0
+	c, server := newTLSAuth0Server(t, "brand-new-token", &auth0CallCount)
+	defer server.Close()
+
+	token, err := c.getToken(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token != "brand-new-token" {
+		t.Errorf("expected %q, got %q", "brand-new-token", token)
+	}
+	if auth0CallCount != 1 {
+		t.Errorf("expected exactly 1 Auth0 call, got %d", auth0CallCount)
+	}
+
+	saved, err := c.loadDiskToken()
+	if err != nil || saved == nil {
+		t.Fatalf("expected token saved to disk: err=%v, saved=%v", err, saved)
+	}
+	if saved.AccessToken != "brand-new-token" {
+		t.Errorf("expected new token persisted to disk, got %q", saved.AccessToken)
 	}
 }
 

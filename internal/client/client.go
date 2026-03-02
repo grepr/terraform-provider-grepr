@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -36,10 +38,24 @@ const (
 	// defaultAuth0Domain is the production Auth0 domain used for OAuth authentication.
 	defaultAuth0Domain = "grepr-prod.us.auth0.com"
 
-	// tokenRefreshBuffer is how long before token expiry we should refresh.
+	// tokenRefreshBuffer is how long before token expiry we should refresh the in-memory token.
 	// We refresh early to avoid race conditions where the token expires mid-request.
 	tokenRefreshBuffer = 60 * time.Second
+
+	// diskTokenRefreshBuffer is the expiry buffer applied when evaluating a disk-cached token.
+	// A larger buffer (5 minutes) is used for disk-cached tokens to match the CLI's GreprAuth
+	// behavior and to account for clock skew across processes that share the same cache file.
+	diskTokenRefreshBuffer = 5 * time.Minute
 )
+
+// cachedTokenData is the JSON structure written to the disk token cache file at
+// ~/.grepr/auth/{clientID}-m2m.json. The ExpiresAt field is epoch milliseconds.
+type cachedTokenData struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+	ExpiresAt   int64  `json:"expires_at"`
+}
 
 // Client is the Grepr API client.
 //
@@ -114,6 +130,17 @@ func (c *Client) getToken(ctx context.Context) (string, error) {
 		return c.accessToken, nil
 	}
 
+	// Check disk cache before calling Auth0 — this avoids a network call when a sibling
+	// process has already fetched and persisted a fresh token (e.g., between terraform steps).
+	if td, err := c.loadDiskToken(); err == nil && td != nil {
+		expiresAt := time.UnixMilli(td.ExpiresAt)
+		if time.Now().Add(diskTokenRefreshBuffer).Before(expiresAt) {
+			c.accessToken = td.AccessToken
+			c.tokenExpiry = expiresAt
+			return td.AccessToken, nil
+		}
+	}
+
 	token, expiresIn, err := c.FetchToken(ctx)
 	if err != nil {
 		return "", err
@@ -121,6 +148,16 @@ func (c *Client) getToken(ctx context.Context) (string, error) {
 
 	c.accessToken = token
 	c.tokenExpiry = time.Now().Add(time.Duration(expiresIn) * time.Second)
+
+	td := cachedTokenData{
+		AccessToken: token,
+		TokenType:   "Bearer",
+		ExpiresIn:   expiresIn,
+		ExpiresAt:   c.tokenExpiry.UnixMilli(),
+	}
+	if err := c.saveDiskToken(td); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to save M2M token to disk cache: %v\n", err)
+	}
 
 	return token, nil
 }
@@ -164,6 +201,65 @@ func (c *Client) FetchToken(ctx context.Context) (string, int, error) {
 	}
 
 	return tokenResp.AccessToken, tokenResp.ExpiresIn, nil
+}
+
+// diskCachePath returns the path of the M2M token cache file for this client.
+// The path is ~/.grepr/auth/{clientID}-m2m.json.
+func (c *Client) diskCachePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+	return filepath.Join(home, ".grepr", "auth", fmt.Sprintf("%s-m2m.json", c.clientID)), nil
+}
+
+// loadDiskToken reads and decodes the disk token cache. Returns nil, nil when
+// the cache file does not exist (a miss is not an error).
+func (c *Client) loadDiskToken() (*cachedTokenData, error) {
+	cachePath, err := c.diskCachePath()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(cachePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to read disk token cache: %w", err)
+	}
+
+	var td cachedTokenData
+	if err := json.Unmarshal(data, &td); err != nil {
+		return nil, fmt.Errorf("failed to decode disk token cache: %w", err)
+	}
+
+	return &td, nil
+}
+
+// saveDiskToken writes the token to the disk cache with restricted permissions.
+// The cache directory is created with mode 0700 and the file with mode 0600.
+func (c *Client) saveDiskToken(td cachedTokenData) error {
+	cachePath, err := c.diskCachePath()
+	if err != nil {
+		return err
+	}
+
+	cacheDir := filepath.Dir(cachePath)
+	if err := os.MkdirAll(cacheDir, 0700); err != nil {
+		return fmt.Errorf("failed to create cache directory: %w", err)
+	}
+
+	data, err := json.Marshal(td)
+	if err != nil {
+		return fmt.Errorf("failed to encode token for disk cache: %w", err)
+	}
+
+	if err := os.WriteFile(cachePath, data, 0600); err != nil {
+		return fmt.Errorf("failed to write disk token cache: %w", err)
+	}
+
+	return nil
 }
 
 const (
