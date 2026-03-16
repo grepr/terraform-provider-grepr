@@ -7,15 +7,46 @@ This Terraform provider enables you to manage Grepr pipelines (async streaming j
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.0
 - [Go](https://golang.org/doc/install) >= 1.21 (for building from source)
 
-## Installation
-
-### From Source
+## Quick Start
 
 ```bash
 git clone https://github.com/grepr/grepr-terraform.git
 cd grepr-terraform
+make setup
+```
+
+This builds the provider and generates a `.terraformrc.local` file that tells Terraform to use the local binary.
+
+Set your credentials:
+
+```bash
+export GREPR_HOST=https://yourorg.app.grepr.ai/
+export GREPR_CLIENT_ID=your-client-id
+export GREPR_CLIENT_SECRET=your-client-secret
+```
+
+Then run Terraform (no `terraform init` needed with `dev_overrides`):
+
+```bash
+cd examples/resources/grepr_pipeline
+TF_CLI_CONFIG_FILE=/path/to/grepr-terraform/.terraformrc.local terraform plan
+```
+
+Or export it for the session:
+
+```bash
+export TF_CLI_CONFIG_FILE=/path/to/grepr-terraform/.terraformrc.local
+terraform plan
+terraform apply
+```
+
+### Alternative: Install to Terraform plugins directory
+
+```bash
 make install
 ```
+
+This installs the provider to `~/.terraform.d/plugins/` so you can use `terraform init` as usual.
 
 ## Authentication
 

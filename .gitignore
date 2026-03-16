@@ -33,7 +33,7 @@ override.tf.json
 # example: *tfplan*
 
 # Ignore CLI configuration files
-.terraformrc
+.terraformrc.local
 terraform.rc
 
 # Go build artifacts
@@ -63,4 +63,4 @@ vendor/
 # OS files
 .DS_Store
 Thumbs.db
-/internal/client/generated/**
+/internal/client/generated/*.gen.go
