@@ -1,10 +1,11 @@
 default: generate lint build
 
 BINARY_NAME=terraform-provider-grepr
-VERSION?=dev
+VERSION?=$(shell cat LATEST_VERSION 2>/dev/null || echo 0.0.1)
 OS_ARCH=$(shell go env GOOS)_$(shell go env GOARCH)
 INSTALL_PATH=~/.terraform.d/plugins/registry.terraform.io/grepr-ai/grepr/$(VERSION)/$(OS_ARCH)
 LINT_VERSION=v1.64.5
+PROVIDER_DIR=$(shell pwd)
 
 .PHONY: build
 build:
@@ -14,6 +15,15 @@ build:
 install: build
 	mkdir -p $(INSTALL_PATH)
 	cp $(BINARY_NAME) $(INSTALL_PATH)/
+
+.PHONY: setup
+setup: generate build
+	@sed 's|__PROVIDER_DIR__|$(PROVIDER_DIR)|g' .terraformrc > .terraformrc.local
+	@echo "Setup complete! Run terraform commands with:"
+	@echo "  TF_CLI_CONFIG_FILE=$(PROVIDER_DIR)/.terraformrc.local terraform plan"
+	@echo ""
+	@echo "Or export it for the session:"
+	@echo "  export TF_CLI_CONFIG_FILE=$(PROVIDER_DIR)/.terraformrc.local"
 
 .PHONY: test
 test:

@@ -108,7 +108,7 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 	var jobGraphJSONToPreserve string
 	var tagsToPreserve map[string]string
 
-	if existingJob != nil {
+	if existingJob != nil && existingJob.State != client.JobStateDeleted {
 		// Adopt the existing pipeline
 		tflog.Info(ctx, "Adopting existing pipeline", map[string]interface{}{
 			"name": name,

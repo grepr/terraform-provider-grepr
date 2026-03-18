@@ -145,9 +145,6 @@ func PipelineSchema() schema.Schema {
 			"created_at": schema.StringAttribute{
 				MarkdownDescription: "The timestamp when the pipeline was created.",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"updated_at": schema.StringAttribute{
 				MarkdownDescription: "The timestamp when the pipeline was last updated.",
