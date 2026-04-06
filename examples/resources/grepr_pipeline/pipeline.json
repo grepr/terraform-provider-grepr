@@ -1,0 +1,22 @@
+{
+  "vertices": [
+    {
+      "type": "datadog-log-agent-source",
+      "name": "source",
+      "integrationId": "your-integration-id"
+    },
+    {
+      "type": "grok-parser",
+      "name": "parser",
+      "grokParsingRules": [
+        "%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{GREEDYDATA:message}"
+      ]
+    },
+    {
+      "type": "logs-iceberg-table-sink",
+      "name": "sink",
+      "datasetId": "your-dataset-id"
+    }
+  ],
+  "edges": ["source -> parser", "parser -> sink"]
+}

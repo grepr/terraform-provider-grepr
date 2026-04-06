@@ -14,29 +14,7 @@ provider "grepr" {
 resource "grepr_pipeline" "example" {
   name = "example_pipeline"
 
-  job_graph_json = jsonencode({
-    vertices = [
-      {
-        type          = "datadog-log-agent-source"
-        name          = "source"
-        integrationId = var.integration_id
-      },
-      {
-        type             = "grok-parser"
-        name             = "parser"
-        grokParsingRules = ["%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{GREEDYDATA:message}"]
-      },
-      {
-        type      = "logs-iceberg-table-sink"
-        name      = "sink"
-        datasetId = var.dataset_id
-      }
-    ]
-    edges = [
-      "source -> parser",
-      "parser -> sink"
-    ]
-  })
+  job_graph_json = file("${path.module}/pipeline.json")
 
   desired_state = "RUNNING"
 
@@ -47,16 +25,6 @@ resource "grepr_pipeline" "example" {
 
   wait_for_state = true
   state_timeout  = 300
-}
-
-variable "integration_id" {
-  description = "The integration ID for the data source"
-  type        = string
-}
-
-variable "dataset_id" {
-  description = "The dataset ID for the sink"
-  type        = string
 }
 
 output "pipeline_id" {

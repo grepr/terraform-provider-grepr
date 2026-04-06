@@ -581,8 +581,12 @@ func (r *PipelineResource) updateModelFromJob(ctx context.Context, model *Pipeli
 	}
 }
 
-// mapToCreateJobTags converts a map[string]string to *map[string]string for CreateJob
+// mapToCreateJobTags converts a map[string]string to *map[string]string for CreateJob.
+// Returns nil when the map is nil or empty so the field is omitted from the JSON payload.
 func mapToCreateJobTags(m map[string]string) *map[string]string {
+	if len(m) == 0 {
+		return nil
+	}
 	return &m
 }
 
