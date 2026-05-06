@@ -189,7 +189,7 @@ func (c *Client) FetchToken(ctx context.Context) (string, int, error) {
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to fetch token: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", 0, fmt.Errorf("failed to fetch token: status %d", resp.StatusCode)
@@ -327,7 +327,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 		if resp.StatusCode >= 500 && attempt < maxRetries {
 			// Server error - read body for error message, then retry
 			bodyBytes, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			lastErr = &APIError{
 				StatusCode: resp.StatusCode,
 				Message:    string(bodyBytes),
@@ -412,7 +412,7 @@ func (e *APIError) IsRetryable() bool {
 
 // handleResponse processes an HTTP response and returns an error if not successful.
 func handleResponse(resp *http.Response, result interface{}) error {
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

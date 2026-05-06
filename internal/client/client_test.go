@@ -387,7 +387,7 @@ func TestClient_RetryOn5xx(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error after retries: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if attemptCount != 3 {
 		t.Errorf("expected 3 attempts, got %d", attemptCount)
@@ -421,7 +421,7 @@ func TestClient_NoRetryOn4xx(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if attemptCount != 1 {
 		t.Errorf("expected 1 attempt for 4xx error, got %d", attemptCount)
@@ -456,7 +456,7 @@ func TestClient_MaxRetries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	expectedAttempts := maxRetries + 1 // maxRetries + initial attempt
 	if attemptCount != expectedAttempts {
