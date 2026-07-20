@@ -4,18 +4,52 @@ This Terraform provider enables you to manage Grepr pipelines (async streaming j
 
 ## Requirements
 
-- [Terraform](https://www.terraform.io/downloads.html) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.21 (for building from source)
+- [OpenTofu](https://opentofu.org/docs/intro/install/) >= 1.0, or [Terraform](https://www.terraform.io/downloads.html) >= 1.0
+- [Go](https://golang.org/doc/install) >= 1.24 (only for building from source)
 
-## Quick Start
+## Install from the OpenTofu registry
+
+The provider is published to the [OpenTofu registry](https://registry.opentofu.org/providers/grepr/grepr). Add it to your configuration:
+
+```hcl
+terraform {
+  required_providers {
+    grepr = {
+      source  = "grepr/grepr"
+      version = "~> 1.0"
+    }
+  }
+}
+```
+
+Then initialize with OpenTofu:
 
 ```bash
-git clone https://github.com/grepr/grepr-terraform.git
-cd grepr-terraform
+tofu init
+```
+
+The release artifacts are standard, GPG-signed Terraform provider packages, so the Terraform CLI can use them too via the fully-qualified source address:
+
+```hcl
+terraform {
+  required_providers {
+    grepr = {
+      source  = "registry.opentofu.org/grepr/grepr"
+      version = "~> 1.0"
+    }
+  }
+}
+```
+
+## Build from source (development)
+
+```bash
+git clone https://github.com/grepr/terraform-provider-grepr.git
+cd terraform-provider-grepr
 make setup
 ```
 
-This builds the provider and generates a `.terraformrc.local` file that tells Terraform to use the local binary.
+This builds the provider and generates a `.terraformrc.local` file that uses `dev_overrides` to point the CLI at the local binary.
 
 Set your credentials:
 
@@ -25,28 +59,28 @@ export GREPR_CLIENT_ID=your-client-id
 export GREPR_CLIENT_SECRET=your-client-secret
 ```
 
-Then run Terraform (no `terraform init` needed with `dev_overrides`):
+Then run OpenTofu/Terraform (no `init` needed with `dev_overrides`):
 
 ```bash
 cd examples/resources/grepr_pipeline
-TF_CLI_CONFIG_FILE=/path/to/grepr-terraform/.terraformrc.local terraform plan
+TF_CLI_CONFIG_FILE=/path/to/terraform-provider-grepr/.terraformrc.local terraform plan
 ```
 
 Or export it for the session:
 
 ```bash
-export TF_CLI_CONFIG_FILE=/path/to/grepr-terraform/.terraformrc.local
+export TF_CLI_CONFIG_FILE=/path/to/terraform-provider-grepr/.terraformrc.local
 terraform plan
 terraform apply
 ```
 
-### Alternative: Install to Terraform plugins directory
+### Alternative: install to the plugins directory
 
 ```bash
 make install
 ```
 
-This installs the provider to `~/.terraform.d/plugins/` so you can use `terraform init` as usual.
+This installs the provider to `~/.terraform.d/plugins/` so you can use `terraform init` / `tofu init` against the local filesystem mirror.
 
 ## Authentication
 

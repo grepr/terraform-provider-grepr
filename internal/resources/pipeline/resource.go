@@ -21,8 +21,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/grepr-ai/terraform-provider-grepr/internal/client"
-	"github.com/grepr-ai/terraform-provider-grepr/internal/client/generated"
+	"github.com/grepr/terraform-provider-grepr/internal/client"
+	"github.com/grepr/terraform-provider-grepr/internal/client/generated"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"

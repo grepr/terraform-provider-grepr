@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grepr-ai/terraform-provider-grepr/internal/client/generated"
+	"github.com/grepr/terraform-provider-grepr/internal/client/generated"
 )
 
 // setupTestServer creates a test HTTP server and a client configured to use it.

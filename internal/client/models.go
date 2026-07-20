@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/grepr-ai/terraform-provider-grepr/internal/client/generated"
+	"github.com/grepr/terraform-provider-grepr/internal/client/generated"
 )
 
 // Type aliases for generated types.
