@@ -17,8 +17,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grepr-ai/terraform-provider-grepr/internal/client"
-	"github.com/grepr-ai/terraform-provider-grepr/internal/resources/pipeline"
+	"github.com/grepr/terraform-provider-grepr/internal/client"
+	"github.com/grepr/terraform-provider-grepr/internal/resources/pipeline"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"

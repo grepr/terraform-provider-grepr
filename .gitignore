@@ -50,6 +50,9 @@ terraform-provider-grepr
 # Output of go coverage tool
 *.out
 
+# GoReleaser output
+dist/
+
 # Dependency directories
 vendor/
 

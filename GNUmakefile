@@ -3,7 +3,7 @@ default: generate lint build
 BINARY_NAME=terraform-provider-grepr
 VERSION?=$(shell cat LATEST_VERSION 2>/dev/null || echo 0.0.1)
 OS_ARCH=$(shell go env GOOS)_$(shell go env GOARCH)
-INSTALL_PATH=~/.terraform.d/plugins/registry.terraform.io/grepr-ai/grepr/$(VERSION)/$(OS_ARCH)
+INSTALL_PATH=~/.terraform.d/plugins/registry.terraform.io/grepr/grepr/$(VERSION)/$(OS_ARCH)
 LINT_VERSION=v2.12.1
 PROVIDER_DIR=$(shell pwd)
 

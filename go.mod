@@ -1,4 +1,4 @@
-module github.com/grepr-ai/terraform-provider-grepr
+module github.com/grepr/terraform-provider-grepr
 
 go 1.24.0
 

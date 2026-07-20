@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     grepr = {
-      source = "grepr-ai/grepr"
+      source = "grepr/grepr"
     }
   }
 }
