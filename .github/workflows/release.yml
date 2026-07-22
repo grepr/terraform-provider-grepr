@@ -34,7 +34,7 @@ jobs:
     - uses: actions/setup-go@v7
       if: steps.check.outputs.should_release == 'true'
       with:
-        go-version: '1.24'
+        go-version: '1.26'
         cache: true
 
     - name: Import GPG key
