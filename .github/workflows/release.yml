@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  # NOTE: temporarily manual-only for the pre-merge v0.1.0-rc1 test release.
-  # The normal `push: branches: [main]` trigger is restored automatically when
-  # the grepr-server PR merges and the sync workflow overwrites this file.
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -13,54 +12,53 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
 
-      - name: Check if release needed
-        id: check
-        run: |
-          VERSION=$(cat LATEST_VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if gh release view "v$VERSION" &>/dev/null; then
-            echo "Release v$VERSION already exists, nothing to do"
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Release v$VERSION does not exist, will create"
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Check if release needed
+      id: check
+      run: |
+        VERSION=$(cat LATEST_VERSION | tr -d '[:space:]')
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        if gh release view "v$VERSION" &>/dev/null; then
+          echo "Release v$VERSION already exists, nothing to do"
+          echo "should_release=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "Release v$VERSION does not exist, will create"
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-go@v6
-        if: steps.check.outputs.should_release == 'true'
-        with:
-          go-version: '1.24'
-          cache: true
+    - uses: actions/setup-go@v7
+      if: steps.check.outputs.should_release == 'true'
+      with:
+        go-version: '1.24'
+        cache: true
 
-      - name: Import GPG key
-        id: import_gpg
-        if: steps.check.outputs.should_release == 'true'
-        uses: crazy-max/ghaction-import-gpg@v6
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.PASSPHRASE }}
+    - name: Import GPG key
+      id: import_gpg
+      if: steps.check.outputs.should_release == 'true'
+      uses: crazy-max/ghaction-import-gpg@v7
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Create and push tag
-        if: steps.check.outputs.should_release == 'true'
-        run: |
-          VERSION="${{ steps.check.outputs.version }}"
-          git config user.name "grepr-terraform-sync[bot]"
-          git config user.email "grepr-terraform-sync[bot]@users.noreply.github.com"
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
+    - name: Create and push tag
+      if: steps.check.outputs.should_release == 'true'
+      run: |
+        VERSION="${{ steps.check.outputs.version }}"
+        git config user.name "grepr-terraform-sync[bot]"
+        git config user.email "grepr-terraform-sync[bot]@users.noreply.github.com"
+        git tag "v$VERSION"
+        git push origin "v$VERSION"
 
-      - name: Run GoReleaser
-        if: steps.check.outputs.should_release == 'true'
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: '~> v2'
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+    - uses: goreleaser/goreleaser-action@v7
+      if: steps.check.outputs.should_release == 'true'
+      with:
+        version: '~> v2'
+        args: release --clean
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
