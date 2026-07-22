@@ -46,12 +46,12 @@ func (c *Client) GetJob(ctx context.Context, id string) (*Job, error) {
 	return &job, nil
 }
 
-// GetJobByName retrieves a job by name.
+// GetJobByName retrieves the latest version of a job by name.
 //
 // Returns nil (not an error) if no job with the given name exists.
 // This is used for adoption - checking if a pipeline with a given name already exists.
 func (c *Client) GetJobByName(ctx context.Context, name string) (*Job, error) {
-	path := fmt.Sprintf("%s?name=%s", EndpointJobs, url.QueryEscape(name))
+	path := fmt.Sprintf("%s?name=%s&latest=true", EndpointJobs, url.QueryEscape(name))
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {

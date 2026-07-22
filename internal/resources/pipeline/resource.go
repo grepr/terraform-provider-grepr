@@ -79,14 +79,18 @@ func (r *PipelineResource) Configure(ctx context.Context, req resource.Configure
 
 // Create creates a new pipeline or adopts an existing one.
 //
-// Adoption behavior: If a pipeline with the same name already exists in Grepr,
-// this resource will "adopt" it instead of failing. This allows users to:
+// Adoption behavior: If an active (non-terminal) pipeline with the same name already
+// exists in Grepr, this resource will "adopt" it instead of failing. This allows users to:
 //   - Import existing pipelines into Terraform management
 //   - Re-run terraform apply after manual creation in the UI
 //   - Recover from partial failures where the resource was created but not tracked
 //
 // After adoption, if the plan differs from the existing pipeline's configuration,
 // an update will be performed to reconcile them.
+//
+// If the only pipeline with that name is in a terminal state (DELETED, FAILED, FINISHED,
+// or CANCELLED), the name is free to reuse, so a brand new pipeline is created rather than
+// adopting the dead one.
 func (r *PipelineResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan PipelineResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -108,8 +112,8 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 	var jobGraphJSONToPreserve string
 	var tagsToPreserve map[string]string
 
-	if existingJob != nil && existingJob.State != client.JobStateDeleted {
-		// Adopt the existing pipeline
+	if existingJob != nil && !client.IsTerminal(existingJob.State) {
+		// Adopt the existing active pipeline
 		tflog.Info(ctx, "Adopting existing pipeline", map[string]interface{}{
 			"name": name,
 			"id":   existingJob.Id,
@@ -137,8 +141,14 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 			if err != nil {
 				if apiErr, ok := err.(*client.APIError); ok && apiErr.IsConflict() {
 					resp.Diagnostics.AddError(
-						"Version Conflict",
-						"The pipeline was modified by another process. Please run terraform refresh and try again.",
+						"Pipeline Name Conflict",
+						fmt.Sprintf(
+							"A pipeline named %q already exists and could not be adopted because it was "+
+								"modified by another process. Re-run 'terraform apply' to retry, or bring the "+
+								"existing pipeline under Terraform management with "+
+								"'terraform import grepr_pipeline.<resource_name> %s'.",
+							name, name,
+						),
 					)
 					return
 				}
@@ -168,6 +178,18 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 
 		newJob, err := r.client.CreateAsyncJob(ctx, *createReq)
 		if err != nil {
+			if apiErr, ok := err.(*client.APIError); ok && apiErr.IsConflict() {
+				resp.Diagnostics.AddError(
+					"Pipeline Name Conflict",
+					fmt.Sprintf(
+						"A pipeline named %q already exists. Pipeline names must be unique within an "+
+							"organization. Choose a different name, or bring the existing pipeline under "+
+							"Terraform management with 'terraform import grepr_pipeline.<resource_name> %s'.",
+						name, name,
+					),
+				)
+				return
+			}
 			resp.Diagnostics.AddError("Failed to create pipeline", err.Error())
 			return
 		}

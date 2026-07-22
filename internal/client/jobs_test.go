@@ -126,6 +126,9 @@ func TestClient_GetJobByName(t *testing.T) {
 		if r.URL.Query().Get("name") != "my_pipeline" {
 			t.Errorf("expected name=my_pipeline, got %s", r.URL.Query().Get("name"))
 		}
+		if r.URL.Query().Get("latest") != "true" {
+			t.Errorf("expected latest=true, got %s", r.URL.Query().Get("latest"))
+		}
 
 		items := []Job{expectedJob}
 		resp := JobsResponse{Items: &items}

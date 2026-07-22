@@ -188,7 +188,7 @@ output "pipeline_state" {
 
 #### Behavior
 
-**Adopt Existing Pipelines**: If a pipeline with the specified name already exists, the provider will adopt it into Terraform management rather than failing. Any differences between the Terraform configuration and the existing pipeline will be applied as an update.
+**Adopt Existing Pipelines**: If an active pipeline with the specified name already exists, the provider will adopt it into Terraform management rather than failing. Any differences between the Terraform configuration and the existing pipeline will be applied as an update. If the only pipeline with that name is in a terminal state (`DELETED`, `FAILED`, `FINISHED`, or `CANCELLED`), the name is free to reuse and a brand new pipeline is created instead.
 
 **Version Conflict Handling**: The provider uses optimistic locking. If a pipeline is modified by another process between read and update, the operation will fail with a conflict error. Run `terraform refresh` and retry.
 
