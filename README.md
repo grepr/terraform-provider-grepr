@@ -9,7 +9,7 @@ This Terraform provider enables you to manage Grepr pipelines (async streaming j
 
 ## Install from the OpenTofu registry
 
-The provider is published to the [OpenTofu registry](https://registry.opentofu.org/providers/grepr/grepr). Add it to your configuration:
+The provider is published to the [OpenTofu registry](https://search.opentofu.org/provider/grepr/grepr/). Add it to your configuration:
 
 ```hcl
 terraform {
