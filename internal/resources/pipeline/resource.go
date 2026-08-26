@@ -18,11 +18,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/grepr/terraform-provider-grepr/internal/client"
 	"github.com/grepr/terraform-provider-grepr/internal/client/generated"
+	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -245,6 +249,7 @@ func (r *PipelineResource) Read(ctx context.Context, req resource.ReadRequest, r
 			return
 		}
 		r.updateModelFromJob(ctx, &state, job, nil)
+		applyProviderDefaults(&state)
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 		return
 	}
@@ -260,6 +265,7 @@ func (r *PipelineResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	r.updateModelFromJob(ctx, &state, job, nil)
+	applyProviderDefaults(&state)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -567,32 +573,30 @@ func (r *PipelineResource) updateModelFromJob(ctx context.Context, model *Pipeli
 	model.PipelineHealth = types.StringNull()
 	model.PipelineMessage = types.StringNull()
 
-	// Use the original request's job graph JSON if provided, otherwise use the API response
-	// This avoids inconsistencies from server-added default fields and JSON field ordering
 	if originalData != nil && originalData.JobGraphJSON != "" {
-		model.JobGraphJSON = types.StringValue(originalData.JobGraphJSON)
-	} else if model.JobGraphJSON.IsUnknown() || model.JobGraphJSON.IsNull() {
-		jobGraphJSON, err := json.Marshal(job.JobGraph)
-		if err == nil {
-			model.JobGraphJSON = types.StringValue(string(jobGraphJSON))
+		// Keep the exact string the practitioner wrote, so apply stays consistent
+		// with the config that produced it.
+		model.JobGraphJSON = jsontypes.NewNormalizedValue(originalData.JobGraphJSON)
+	} else if !sameJobGraph(model.JobGraphJSON.ValueString(), job.JobGraph) {
+		// Refresh only on a real difference, so an edit made outside Terraform
+		// shows up as drift while the API's own formatting does not.
+		if refreshed, err := refreshedJobGraph(model.JobGraphJSON.ValueString(), job.JobGraph); err == nil {
+			model.JobGraphJSON = jsontypes.NewNormalizedValue(refreshed)
 		}
 	}
 
-	// Use the original request's tags if provided, otherwise use the API response
-	// This avoids inconsistencies from server-added system tags
 	if originalData != nil {
 		if len(originalData.Tags) > 0 {
 			model.Tags, _ = types.MapValueFrom(ctx, types.StringType, originalData.Tags)
 		} else {
 			model.Tags = types.MapNull(types.StringType)
 		}
-	} else if model.Tags.IsUnknown() || model.Tags.IsNull() {
-		tags := readJobTagsToMap(job.Tags)
-		if len(tags) > 0 {
-			model.Tags, _ = types.MapValueFrom(ctx, types.StringType, tags)
-		} else {
-			model.Tags = types.MapNull(types.StringType)
-		}
+	} else if tags := readJobTagsToMap(job.Tags); len(tags) > 0 {
+		// Read takes the tags the API reports. Terraform cannot change them, so
+		// state has to show what the pipeline actually carries.
+		model.Tags, _ = types.MapValueFrom(ctx, types.StringType, tags)
+	} else {
+		model.Tags = types.MapNull(types.StringType)
 	}
 
 	// Convert team IDs
@@ -600,6 +604,218 @@ func (r *PipelineResource) updateModelFromJob(ctx context.Context, model *Pipeli
 		model.TeamIDs, _ = types.SetValueFrom(ctx, types.StringType, *job.TeamIds)
 	} else {
 		model.TeamIDs = types.SetNull(types.StringType)
+	}
+}
+
+// sameJobGraph reports whether the API graph still matches everything the state
+// graph specifies. Operation keeps its fields as raw JSON, so the comparison
+// works on decoded values: key order, whitespace, and number formatting such as
+// 70 against 70.0 do not count as differences.
+//
+// The API materializes optional fields the configuration leaves out, so a field
+// present only on the API side is treated as a server default and not as a
+// change. Without that, a configuration that omits an optional field would plan
+// its removal on every run and never converge, because the server puts it back.
+// The cost is that setting such an omitted field outside Terraform looks the
+// same as a default and is not reported.
+func sameJobGraph(stateJSON string, apiGraph client.JobGraph) bool {
+	if stateJSON == "" {
+		return false
+	}
+
+	apiJSON, err := json.Marshal(apiGraph)
+	if err != nil {
+		return false
+	}
+
+	stateValue, err := canonicalJSONValue(stateJSON)
+	if err != nil {
+		return false
+	}
+
+	apiValue, err := canonicalJSONValue(string(apiJSON))
+	if err != nil {
+		return false
+	}
+
+	return apiMatchesState(apiValue, stateValue)
+}
+
+// refreshedJobGraph returns the API graph reduced to the fields the state graph
+// tracks. State only ever holds the fields the configuration writes, so keeping
+// the API's materialized defaults out of it keeps a drift plan to the fields
+// that actually changed. Without this, one edit made outside Terraform drags
+// every server default into the plan as a removal.
+func refreshedJobGraph(stateJSON string, apiGraph client.JobGraph) (string, error) {
+	apiJSON, err := json.Marshal(apiGraph)
+	if err != nil {
+		return "", err
+	}
+
+	stateValue, err := decodeJSONValue(stateJSON)
+	if err != nil {
+		// No usable state to project onto, such as straight after an import.
+		return string(apiJSON), nil
+	}
+
+	apiValue, err := decodeJSONValue(string(apiJSON))
+	if err != nil {
+		return "", err
+	}
+
+	projected, err := json.Marshal(projectOntoState(apiValue, stateValue))
+	if err != nil {
+		return "", err
+	}
+
+	return string(projected), nil
+}
+
+// projectOntoState rebuilds the API value keeping only the object keys the state
+// value has. A key the API no longer reports is dropped, so its loss still shows
+// as drift. Lists are taken from the API, element-wise when the lengths line up.
+func projectOntoState(apiValue, stateValue interface{}) interface{} {
+	switch state := stateValue.(type) {
+	case map[string]interface{}:
+		api, ok := apiValue.(map[string]interface{})
+		if !ok {
+			return apiValue
+		}
+		projected := make(map[string]interface{}, len(state))
+		for key, stateItem := range state {
+			if apiItem, present := api[key]; present {
+				projected[key] = projectOntoState(apiItem, stateItem)
+			}
+		}
+		return projected
+	case []interface{}:
+		api, ok := apiValue.([]interface{})
+		if !ok || len(api) != len(state) {
+			return apiValue
+		}
+		projected := make([]interface{}, len(api))
+		for i := range api {
+			projected[i] = projectOntoState(api[i], state[i])
+		}
+		return projected
+	case json.Number:
+		// Same number, different spelling such as 70 against 70.0. Keep what
+		// state already had so a refresh does not invent a change.
+		if apiNumber, ok := apiValue.(json.Number); ok && sameNumber(apiNumber, state) {
+			return state
+		}
+		return apiValue
+	default:
+		return apiValue
+	}
+}
+
+func sameNumber(a, b json.Number) bool {
+	aRat, aOK := new(big.Rat).SetString(a.String())
+	bRat, bOK := new(big.Rat).SetString(b.String())
+	if !aOK || !bOK {
+		return a.String() == b.String()
+	}
+
+	return aRat.Cmp(bRat) == 0
+}
+
+// apiMatchesState reports whether every value the state side specifies is
+// present and equal on the API side. Objects may carry extra keys on the API
+// side; arrays and scalars must match exactly.
+func apiMatchesState(apiValue, stateValue interface{}) bool {
+	switch state := stateValue.(type) {
+	case map[string]interface{}:
+		api, ok := apiValue.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		for key, stateItem := range state {
+			apiItem, present := api[key]
+			if !present || !apiMatchesState(apiItem, stateItem) {
+				return false
+			}
+		}
+		return true
+	case []interface{}:
+		api, ok := apiValue.([]interface{})
+		if !ok || len(api) != len(state) {
+			return false
+		}
+		for i, stateItem := range state {
+			if !apiMatchesState(api[i], stateItem) {
+				return false
+			}
+		}
+		return true
+	default:
+		return reflect.DeepEqual(apiValue, stateValue)
+	}
+}
+
+// canonicalNumber is a JSON number reduced to a single exact textual form. It is
+// a distinct type so that the number 70 never compares equal to the string "70".
+type canonicalNumber string
+
+func canonicalJSONValue(jsonStr string) (interface{}, error) {
+	decoded, err := decodeJSONValue(jsonStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return canonicalize(decoded), nil
+}
+
+// decodeJSONValue decodes without canonicalising, so the result can be written
+// back out as JSON. Numbers stay json.Number to keep the exact value: Go's
+// float64 would round integers above 2^53 and make different offsets look
+// identical.
+func decodeJSONValue(jsonStr string) (interface{}, error) {
+	dec := json.NewDecoder(strings.NewReader(jsonStr))
+	dec.UseNumber()
+
+	var decoded interface{}
+	if err := dec.Decode(&decoded); err != nil {
+		return nil, err
+	}
+
+	return decoded, nil
+}
+
+func canonicalize(value interface{}) interface{} {
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		for key, item := range typed {
+			typed[key] = canonicalize(item)
+		}
+		return typed
+	case []interface{}:
+		for i, item := range typed {
+			typed[i] = canonicalize(item)
+		}
+		return typed
+	case json.Number:
+		if rat, ok := new(big.Rat).SetString(typed.String()); ok {
+			return canonicalNumber(rat.RatString())
+		}
+		return canonicalNumber(typed.String())
+	default:
+		return value
+	}
+}
+
+// applyProviderDefaults fills optional attributes that the API does not return.
+// Import starts with these null, which would otherwise make the first plan after
+// an import show a change on a pipeline nobody edited.
+func applyProviderDefaults(model *PipelineResourceModel) {
+	if model.WaitForState.IsNull() {
+		model.WaitForState = types.BoolValue(defaultWaitForState)
+	}
+	if model.StateTimeout.IsNull() {
+		model.StateTimeout = types.Int64Value(defaultStateTimeoutSeconds)
+	}
+	if model.RollbackEnabled.IsNull() {
+		model.RollbackEnabled = types.BoolValue(defaultRollbackEnabled)
 	}
 }
 

@@ -3,6 +3,7 @@
 package pipeline
 
 import (
+	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -24,14 +25,14 @@ import (
 // 3. Pipeline status: Nested health and status information
 type PipelineResourceModel struct {
 	// Configuration attributes
-	Name            types.String `tfsdk:"name"`
-	JobGraphJSON    types.String `tfsdk:"job_graph_json"`
-	DesiredState    types.String `tfsdk:"desired_state"`
-	TeamIDs         types.Set    `tfsdk:"team_ids"`
-	Tags            types.Map    `tfsdk:"tags"`
-	WaitForState    types.Bool   `tfsdk:"wait_for_state"`
-	StateTimeout    types.Int64  `tfsdk:"state_timeout"`
-	RollbackEnabled types.Bool   `tfsdk:"rollback_enabled"`
+	Name            types.String         `tfsdk:"name"`
+	JobGraphJSON    jsontypes.Normalized `tfsdk:"job_graph_json"`
+	DesiredState    types.String         `tfsdk:"desired_state"`
+	TeamIDs         types.Set            `tfsdk:"team_ids"`
+	Tags            types.Map            `tfsdk:"tags"`
+	WaitForState    types.Bool           `tfsdk:"wait_for_state"`
+	StateTimeout    types.Int64          `tfsdk:"state_timeout"`
+	RollbackEnabled types.Bool           `tfsdk:"rollback_enabled"`
 
 	// Computed attributes
 	ID             types.String `tfsdk:"id"`
@@ -45,6 +46,15 @@ type PipelineResourceModel struct {
 	PipelineHealth  types.String `tfsdk:"pipeline_health"`
 	PipelineMessage types.String `tfsdk:"pipeline_message"`
 }
+
+// Provider-side defaults for optional attributes. These are shared between the
+// schema and applyProviderDefaults so imported state matches what the schema
+// gives a fresh plan.
+const (
+	defaultWaitForState        = true
+	defaultStateTimeoutSeconds = 600
+	defaultRollbackEnabled     = true
+)
 
 // PipelineSchema returns the complete Terraform schema definition for the grepr_pipeline resource.
 //
@@ -73,8 +83,10 @@ func PipelineSchema() schema.Schema {
 				},
 			},
 			"job_graph_json": schema.StringAttribute{
-				MarkdownDescription: "The job graph as a JSON string. Use `jsonencode()` to convert a Terraform object to JSON.",
-				Required:            true,
+				MarkdownDescription: "The job graph as a JSON string. Use `jsonencode()` to convert a Terraform object to JSON. " +
+					"The value is compared semantically, so whitespace, key order, and number formatting do not cause changes.",
+				Required:   true,
+				CustomType: jsontypes.NormalizedType{},
 			},
 
 			// Optional configuration
@@ -93,30 +105,35 @@ func PipelineSchema() schema.Schema {
 				ElementType:         types.StringType,
 			},
 			"tags": schema.MapAttribute{
-				MarkdownDescription: "Custom tags for the pipeline.",
-				Optional:            true,
-				ElementType:         types.StringType,
+				MarkdownDescription: "Custom tags for the pipeline. Tags are set when the pipeline is created. " +
+					"The update API does not accept tags, so changing them later has no effect and the provider " +
+					"keeps the tags the pipeline already has, including `grepr-ui-managed`.",
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
 				PlanModifiers: []planmodifier.Map{
 					mapplanmodifier.UseStateForUnknown(),
+					createOnlyTags{},
 				},
 			},
 			"wait_for_state": schema.BoolAttribute{
 				MarkdownDescription: "Whether to wait for the pipeline to reach the desired state after create/update operations. Defaults to `true`.",
 				Optional:            true,
 				Computed:            true,
-				Default:             booldefault.StaticBool(true),
+				Default:             booldefault.StaticBool(defaultWaitForState),
 			},
 			"state_timeout": schema.Int64Attribute{
 				MarkdownDescription: "Timeout in seconds for waiting for state transitions. Defaults to `600` (10 minutes).",
 				Optional:            true,
 				Computed:            true,
-				Default:             int64default.StaticInt64(600),
+				Default:             int64default.StaticInt64(defaultStateTimeoutSeconds),
 			},
 			"rollback_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether to enable automatic rollback on update failures. Defaults to `false`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
+				MarkdownDescription: "Whether to roll the pipeline back to its last stable configuration when an " +
+					"update fails. Defaults to `true`, matching the UI.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(defaultRollbackEnabled),
 			},
 
 			// Computed attributes (read-only)
