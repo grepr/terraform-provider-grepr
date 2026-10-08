@@ -90,7 +90,8 @@ func (r *PipelineResource) Configure(ctx context.Context, req resource.Configure
 //   - Recover from partial failures where the resource was created but not tracked
 //
 // After adoption, if the plan differs from the existing pipeline's configuration,
-// an update will be performed to reconcile them.
+// an update will be performed to reconcile them. The update API cannot change tags,
+// so configured tags must match the tags of the existing pipeline.
 //
 // If the only pipeline with that name is in a terminal state (DELETED, FAILED, FINISHED,
 // or CANCELLED), the name is free to reuse, so a brand new pipeline is created rather than
@@ -114,7 +115,6 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 
 	var job *client.Job
 	var jobGraphJSONToPreserve string
-	var tagsToPreserve map[string]string
 
 	if existingJob != nil && !client.IsTerminal(existingJob.State) {
 		// Adopt the existing active pipeline
@@ -124,22 +124,26 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 		})
 		job = existingJob
 
+		configuredTags, err := r.extractTags(ctx, plan.Tags)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to extract tags", err.Error())
+			return
+		}
+		jobGraphJSONToPreserve = plan.JobGraphJSON.ValueString()
+
+		// The update API cannot change tags, so configured tags must already match.
+		checkTagsUnchanged(&resp.Diagnostics, configuredTags, existingJob.Tags)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
 		// Apply any differences as an update
-		needsUpdate := r.needsUpdate(ctx, plan, existingJob)
-		if needsUpdate {
+		if r.needsUpdate(ctx, plan, existingJob) {
 			updateReq, err := r.buildUpdateRequest(ctx, plan, existingJob)
 			if err != nil {
 				resp.Diagnostics.AddError("Failed to build update request", err.Error())
 				return
 			}
-
-			// Preserve the original plan values
-			tagsToPreserve, err = r.extractTags(ctx, plan.Tags)
-			if err != nil {
-				resp.Diagnostics.AddError("Failed to extract tags", err.Error())
-				return
-			}
-			jobGraphJSONToPreserve = plan.JobGraphJSON.ValueString()
 
 			updatedJob, err := r.client.UpdateJob(ctx, existingJob.Id, *updateReq, plan.RollbackEnabled.ValueBool())
 			if err != nil {
@@ -160,25 +164,16 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 				return
 			}
 			job = updatedJob
-		} else {
-			// No update needed, preserve plan values
-			tagsToPreserve, err = r.extractTags(ctx, plan.Tags)
-			if err != nil {
-				resp.Diagnostics.AddError("Failed to extract tags", err.Error())
-				return
-			}
-			jobGraphJSONToPreserve = plan.JobGraphJSON.ValueString()
 		}
 	} else {
 		// Create a new pipeline
-		createReq, tags, err := r.buildCreateRequest(ctx, plan)
+		createReq, err := r.buildCreateRequest(ctx, plan)
 		if err != nil {
 			resp.Diagnostics.AddError("Failed to build create request", err.Error())
 			return
 		}
 
 		jobGraphJSONToPreserve = plan.JobGraphJSON.ValueString()
-		tagsToPreserve = tags
 
 		newJob, err := r.client.CreateAsyncJob(ctx, *createReq)
 		if err != nil {
@@ -220,7 +215,6 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 	// Update state from the job, but preserve the original request for job_graph_json, tags, and desired state
 	r.updateModelFromJob(ctx, &plan, job, &originalJobData{
 		JobGraphJSON: jobGraphJSONToPreserve,
-		Tags:         tagsToPreserve,
 		DesiredState: plan.DesiredState.ValueString(),
 	})
 
@@ -298,13 +292,6 @@ func (r *PipelineResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	// Extract tags from plan to preserve in state
-	tags, err := r.extractTags(ctx, plan.Tags)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to extract tags", err.Error())
-		return
-	}
-
 	tflog.Debug(ctx, "Updating pipeline", map[string]interface{}{
 		"id":          id,
 		"fromVersion": currentJob.Version,
@@ -342,7 +329,6 @@ func (r *PipelineResource) Update(ctx context.Context, req resource.UpdateReques
 
 	r.updateModelFromJob(ctx, &plan, job, &originalJobData{
 		JobGraphJSON: plan.JobGraphJSON.ValueString(),
-		Tags:         tags,
 		DesiredState: plan.DesiredState.ValueString(),
 	})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -414,21 +400,20 @@ func (r *PipelineResource) ImportState(ctx context.Context, req resource.ImportS
 }
 
 // buildCreateRequest builds a CreateJobRequest from the plan.
-// Returns the request and the extracted tags map for state preservation.
-func (r *PipelineResource) buildCreateRequest(ctx context.Context, plan PipelineResourceModel) (*client.CreateJobRequest, map[string]string, error) {
+func (r *PipelineResource) buildCreateRequest(ctx context.Context, plan PipelineResourceModel) (*client.CreateJobRequest, error) {
 	jobGraph, err := r.parseJobGraph(plan.JobGraphJSON.ValueString())
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse job_graph_json: %w", err)
+		return nil, fmt.Errorf("failed to parse job_graph_json: %w", err)
 	}
 
 	tags, err := r.extractTags(ctx, plan.Tags)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to extract tags: %w", err)
+		return nil, fmt.Errorf("failed to extract tags: %w", err)
 	}
 
 	teamIDs, err := r.extractTeamIDs(ctx, plan.TeamIDs)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to extract team_ids: %w", err)
+		return nil, fmt.Errorf("failed to extract team_ids: %w", err)
 	}
 
 	return &client.CreateJobRequest{
@@ -438,7 +423,7 @@ func (r *PipelineResource) buildCreateRequest(ctx context.Context, plan Pipeline
 		JobGraph:   *jobGraph,
 		Tags:       mapToCreateJobTags(tags),
 		TeamIds:    teamIDs,
-	}, tags, nil
+	}, nil
 }
 
 // buildUpdateRequest builds an UpdateJobRequest from the plan and current job.
@@ -536,11 +521,9 @@ func (r *PipelineResource) needsUpdate(ctx context.Context, plan PipelineResourc
 // This is important because:
 //   - job_graph_json: The API may add default fields or reorder JSON keys, causing
 //     spurious diffs on subsequent plans
-//   - tags: The API may add system tags that the user didn't specify
 //   - desired_state: We want to track what the user requested, not the current state
 type originalJobData struct {
 	JobGraphJSON string
-	Tags         map[string]string
 	DesiredState string
 }
 
@@ -585,18 +568,15 @@ func (r *PipelineResource) updateModelFromJob(ctx context.Context, model *Pipeli
 		}
 	}
 
-	if originalData != nil {
-		if len(originalData.Tags) > 0 {
-			model.Tags, _ = types.MapValueFrom(ctx, types.StringType, originalData.Tags)
-		} else {
-			model.Tags = types.MapNull(types.StringType)
+	// On apply the model is the plan, and Terraform rejects state that differs
+	// from a known planned value, null included. Otherwise take the tags the API
+	// reports. No tags is an empty map, so a configured tags = {} matches it.
+	if originalData == nil || model.Tags.IsUnknown() {
+		tags := job.Tags
+		if tags == nil {
+			tags = map[string]string{}
 		}
-	} else if tags := readJobTagsToMap(job.Tags); len(tags) > 0 {
-		// Read takes the tags the API reports. Terraform cannot change them, so
-		// state has to show what the pipeline actually carries.
 		model.Tags, _ = types.MapValueFrom(ctx, types.StringType, tags)
-	} else {
-		model.Tags = types.MapNull(types.StringType)
 	}
 
 	// Convert team IDs
@@ -826,9 +806,4 @@ func mapToCreateJobTags(m map[string]string) *map[string]string {
 		return nil
 	}
 	return &m
-}
-
-// readJobTagsToMap converts map[string]string from ReadJob to map[string]string
-func readJobTagsToMap(tags map[string]string) map[string]string {
-	return tags
 }

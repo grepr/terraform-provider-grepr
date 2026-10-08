@@ -4,6 +4,7 @@ package pipeline
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/mapvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -106,11 +107,15 @@ func PipelineSchema() schema.Schema {
 			},
 			"tags": schema.MapAttribute{
 				MarkdownDescription: "Custom tags for the pipeline. Tags are set when the pipeline is created. " +
-					"The update API does not accept tags, so changing them later has no effect and the provider " +
-					"keeps the tags the pipeline already has, including `grepr-ui-managed`.",
+					"The update API does not accept tags, so for an existing pipeline the configured tags must " +
+					"match the tags it already has. Leave tags unset to keep the existing tags, including " +
+					"`grepr-ui-managed`.",
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.StringType,
+				Validators: []validator.Map{
+					mapvalidator.KeysAre(noReservedTagPrefix{}),
+				},
 				PlanModifiers: []planmodifier.Map{
 					mapplanmodifier.UseStateForUnknown(),
 					createOnlyTags{},

@@ -68,6 +68,50 @@ func TestUpdateModelFromJobPreservesConfiguredGraph(t *testing.T) {
 	}
 }
 
+// A pipeline without tags must read as an empty map. A null value does not match
+// a configured tags = {}, so every plan would show a change.
+func TestUpdateModelFromJobReadsNoTagsAsEmptyMap(t *testing.T) {
+	r := &PipelineResource{}
+	model := &PipelineResourceModel{}
+	job := testJob(t, testGraphJSON)
+	job.Tags = nil
+
+	r.updateModelFromJob(context.Background(), model, job, nil)
+
+	if model.Tags.IsNull() || len(model.Tags.Elements()) != 0 {
+		t.Errorf("expected an empty tags map, got %s", model.Tags)
+	}
+}
+
+// On apply the model is the plan. Terraform rejects state that differs from a
+// known planned value, so a null plan from old state must stay null.
+func TestUpdateModelFromJobKeepsPlannedTags(t *testing.T) {
+	r := &PipelineResource{}
+	model := &PipelineResourceModel{Tags: types.MapNull(types.StringType)}
+	job := testJob(t, testGraphJSON)
+	job.Tags = nil
+
+	r.updateModelFromJob(context.Background(), model, job, &originalJobData{DesiredState: "RUNNING"})
+
+	if !model.Tags.IsNull() {
+		t.Errorf("expected the planned null tags, got %s", model.Tags)
+	}
+}
+
+// Unset tags on create plan an unknown value, so state takes the API tags.
+func TestUpdateModelFromJobResolvesUnknownTags(t *testing.T) {
+	r := &PipelineResource{}
+	model := &PipelineResourceModel{Tags: types.MapUnknown(types.StringType)}
+	job := testJob(t, testGraphJSON)
+	job.Tags = map[string]string{"grepr-ui-managed": "true"}
+
+	r.updateModelFromJob(context.Background(), model, job, &originalJobData{DesiredState: "RUNNING"})
+
+	if model.Tags.IsUnknown() || len(model.Tags.Elements()) != 1 {
+		t.Errorf("expected the API tags, got %s", model.Tags)
+	}
+}
+
 // Import returns none of the provider-side defaults. Without them an unchanged
 // pipeline plans a change on the first apply after an import.
 func TestApplyProviderDefaultsFillsNullValues(t *testing.T) {

@@ -168,10 +168,10 @@ output "pipeline_state" {
 | `job_graph_json`   | string      | Yes      | The job graph as a JSON string. Use `jsonencode()`.        |
 | `desired_state`    | string      | No       | Desired state: `RUNNING` or `STOPPED`. Default: `RUNNING`. |
 | `team_ids`         | set(string) | No       | Team IDs associated with this pipeline.                    |
-| `tags`             | map(string) | No       | Custom tags for the pipeline.                              |
+| `tags`             | map(string) | No       | Tags set on create. Cannot change later; see below.        |
 | `wait_for_state`   | bool        | No       | Wait for desired state after operations. Default: `true`.  |
 | `state_timeout`    | number      | No       | Timeout in seconds for state transitions. Default: `600`.  |
-| `rollback_enabled` | bool        | No       | Enable automatic rollback on failures. Default: `false`.   |
+| `rollback_enabled` | bool        | No       | Enable automatic rollback on failures. Default: `true`.    |
 
 #### Attributes Reference
 
@@ -189,6 +189,8 @@ output "pipeline_state" {
 #### Behavior
 
 **Adopt Existing Pipelines**: If an active pipeline with the specified name already exists, the provider will adopt it into Terraform management rather than failing. Any differences between the Terraform configuration and the existing pipeline will be applied as an update. If the only pipeline with that name is in a terminal state (`DELETED`, `FAILED`, `FINISHED`, or `CANCELLED`), the name is free to reuse and a brand new pipeline is created instead.
+
+**Tags**: Grepr sets tags only when it creates a pipeline, because the update API does not accept tags. For an existing or adopted pipeline, the configured tags must match the tags it already has. Leave `tags` unset to keep the existing tags, including `grepr-ui-managed`. Tag keys that start with `__grepr__` are reserved.
 
 **Version Conflict Handling**: The provider uses optimistic locking. If a pipeline is modified by another process between read and update, the operation will fail with a conflict error. Run `terraform refresh` and retry.
 

@@ -68,15 +68,15 @@ output "pipeline_health" {
 
 ### Required
 
-- `job_graph_json` (String) The job graph as a JSON string. Use `jsonencode()` to convert a Terraform object to JSON.
+- `job_graph_json` (String) The job graph as a JSON string. Use `jsonencode()` to convert a Terraform object to JSON. The value is compared semantically, so whitespace, key order, and number formatting do not cause changes.
 - `name` (String) The name of the pipeline. Must match the pattern `[a-z0-9_]{1,128}`. Changing this will adopt an existing pipeline with that name or create a new one.
 
 ### Optional
 
 - `desired_state` (String) The desired state of the pipeline. Valid values are `RUNNING` or `STOPPED`. Defaults to `RUNNING`.
-- `rollback_enabled` (Boolean) Whether to enable automatic rollback on update failures. Defaults to `false`.
+- `rollback_enabled` (Boolean) Whether to roll the pipeline back to its last stable configuration when an update fails. Defaults to `true`, matching the UI.
 - `state_timeout` (Number) Timeout in seconds for waiting for state transitions. Defaults to `600` (10 minutes).
-- `tags` (Map of String) Custom tags for the pipeline.
+- `tags` (Map of String) Custom tags for the pipeline. Tags are set when the pipeline is created. The update API does not accept tags, so for an existing pipeline the configured tags must match the tags it already has. Leave tags unset to keep the existing tags, including `grepr-ui-managed`.
 - `team_ids` (Set of String) Set of team IDs that this pipeline is associated with.
 - `wait_for_state` (Boolean) Whether to wait for the pipeline to reach the desired state after create/update operations. Defaults to `true`.
 
