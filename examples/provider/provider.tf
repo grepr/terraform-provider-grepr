@@ -2,7 +2,7 @@ terraform {
   required_providers {
     grepr = {
       source  = "grepr/grepr"
-      version = "~> 1.0"
+      version = "~> 1.2"
     }
   }
 }
