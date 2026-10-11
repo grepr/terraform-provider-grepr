@@ -67,3 +67,6 @@ vendor/
 .DS_Store
 Thumbs.db
 /internal/client/generated/*.gen.go
+
+# Test scratch files
+build/

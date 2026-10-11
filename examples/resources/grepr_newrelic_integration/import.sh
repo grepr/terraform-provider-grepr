@@ -1,0 +1,1 @@
+terraform import grepr_newrelic_integration.main INTEGRATION_ID

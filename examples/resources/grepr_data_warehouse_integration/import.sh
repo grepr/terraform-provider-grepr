@@ -1,0 +1,1 @@
+terraform import grepr_data_warehouse_integration.main INTEGRATION_ID

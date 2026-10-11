@@ -1,0 +1,1 @@
+terraform import grepr_otlp_integration.main INTEGRATION_ID

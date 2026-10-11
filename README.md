@@ -1,11 +1,11 @@
 # Terraform Provider for Grepr
 
-This Terraform provider enables you to manage Grepr pipelines (async streaming jobs) using Infrastructure as Code.
+This Terraform provider enables you to manage Grepr integrations, datasets, and pipelines using Infrastructure as Code.
 
 ## Requirements
 
 - [OpenTofu](https://opentofu.org/docs/intro/install/) >= 1.0, or [Terraform](https://www.terraform.io/downloads.html) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.24 (only for building from source)
+- [Go](https://golang.org/doc/install) >= 1.25 (only for building from source)
 
 ## Install from the OpenTofu registry
 
@@ -110,6 +110,12 @@ You can also configure the provider using environment variables:
 
 ## Resources
 
+- Integrations, one resource per type: [`grepr_datadog_integration`](docs/resources/datadog_integration.md), [`grepr_splunk_integration`](docs/resources/splunk_integration.md), [`grepr_newrelic_integration`](docs/resources/newrelic_integration.md), [`grepr_sumo_integration`](docs/resources/sumo_integration.md), [`grepr_otlp_integration`](docs/resources/otlp_integration.md), [`grepr_data_warehouse_integration`](docs/resources/data_warehouse_integration.md), and [`grepr_s3_data_warehouse_integration`](docs/resources/s3_data_warehouse_integration.md).
+- [`grepr_dataset`](docs/resources/dataset.md): dataset creation, rename, access, import, and deletion.
+- [`grepr_pipeline`](docs/resources/pipeline.md): streaming pipeline lifecycle.
+
+The [complete stack example](examples/complete-stack/main.tf) connects integrations, a dataset, and a pipeline through resource references. Terraform waits for integration creation and secret setup before creating dependents. Protect your state backend: sensitive credentials remain in state.
+
 ### grepr_pipeline
 
 Manages a Grepr pipeline (async streaming job).
@@ -205,8 +211,10 @@ terraform import grepr_pipeline.example my_pipeline_name
 
 ### Building
 
+The API types and client are generated from `openapi.json` and are not committed, so generate them before the first build:
+
 ```bash
-make build
+make generate build
 ```
 
 ### Testing

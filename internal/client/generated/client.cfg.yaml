@@ -1,0 +1,51 @@
+# Generates the API client for the operations the provider calls; the types
+# it uses come from models.gen.go.
+package: generated
+output: client.gen.go
+generate:
+  client: true
+output-options:
+  include-operation-ids:
+    - createDataset
+    - getDatasetById
+    - updateDataset
+    - deleteDataset
+    - createDatadogIntegration
+    - getDatadogIntegration
+    - updateDatadogIntegration
+    - deleteDatadogIntegration
+    - createSplunkIntegration
+    - getSplunkIntegration
+    - updateSplunkIntegration
+    - deleteSplunkIntegration
+    - createNewRelicIntegration
+    - getNewRelicIntegration
+    - updateNewRelicIntegration
+    - deleteNewRelicIntegration
+    - createSumoIntegration
+    - getSumoIntegration
+    - updateSumoIntegration
+    - deleteSumoIntegration
+    - createOtlpIntegration
+    - getOtlpIntegration
+    - updateOtlpIntegration
+    - deleteOtlpIntegration
+    - createDataWarehouseIntegration
+    - getDataWarehouseIntegration
+    - updateDataWarehouseIntegration
+    - deleteDataWarehouseIntegration
+    - createS3DataWarehouseIntegration
+    - getS3DataWarehouseIntegration
+    - updateS3DataWarehouseIntegration
+    - deleteS3DataWarehouseIntegration
+    - upsertDatadogApiKey
+    - setDatadogApiKeys
+    - upsertDatadogAppKey
+    - upsertSplunkAuthToken
+    - upsertSplunkRestAuthToken
+    - upsertNewRelicLicenseKey
+    - upsertNewRelicApiKey
+    - upsertSumoEndpoint
+    - getOtlpToken
+    - upsertOtlpSecretHeader
+    - deleteOtlpSecretHeader

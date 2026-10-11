@@ -18,6 +18,8 @@ import (
 	"strings"
 
 	"github.com/grepr/terraform-provider-grepr/internal/client"
+	"github.com/grepr/terraform-provider-grepr/internal/resources/dataset"
+	"github.com/grepr/terraform-provider-grepr/internal/resources/integration"
 	"github.com/grepr/terraform-provider-grepr/internal/resources/pipeline"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -61,7 +63,7 @@ func (p *GreprProvider) Metadata(ctx context.Context, req provider.MetadataReque
 // Schema defines the provider-level schema for configuration.
 func (p *GreprProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "The Grepr provider is used to manage Grepr pipelines using the Grepr API.",
+		MarkdownDescription: "The Grepr provider manages pipelines, integrations, and datasets using the Grepr API.",
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
 				MarkdownDescription: "The Grepr API host URL (e.g., `https://myorg.app.grepr.ai/api`). Can also be set via the `GREPR_HOST` environment variable.",
@@ -162,6 +164,14 @@ func (p *GreprProvider) Configure(ctx context.Context, req provider.ConfigureReq
 func (p *GreprProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		pipeline.NewPipelineResource,
+		integration.NewDatadogResource,
+		integration.NewSplunkResource,
+		integration.NewNewRelicResource,
+		integration.NewSumoResource,
+		integration.NewOTLPResource,
+		integration.NewDataWarehouseResource,
+		integration.NewS3DataWarehouseResource,
+		dataset.NewDatasetResource,
 	}
 }
 
