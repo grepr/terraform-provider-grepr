@@ -300,7 +300,7 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 20,
+            "maxItems": 64,
             "minItems": 0,
             "type": "array"
           },
@@ -392,7 +392,7 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 20,
+            "maxItems": 64,
             "minItems": 0,
             "type": "array"
           },
@@ -478,7 +478,7 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 20,
+            "maxItems": 64,
             "minItems": 0,
             "type": "array"
           },
@@ -2339,6 +2339,17 @@
         },
         "type": "object"
       },
+      "AppendMessageRequest": {
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
       "ArrayData": {
         "type": "object"
       },
@@ -2868,6 +2879,14 @@
         ],
         "type": "object"
       },
+      "AutoApproveRequest": {
+        "properties": {
+          "autoApprove": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "AvailablePermission": {
         "properties": {
           "action": {
@@ -3257,6 +3276,74 @@
             "type": "string"
           },
           "sampleId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatList": {
+        "properties": {
+          "chats": {
+            "items": {
+              "$ref": "#/components/schemas/ChatSummary"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatPreferences": {
+        "properties": {
+          "enabledSkills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ChatStatusResponse": {
+        "properties": {
+          "autoApprove": {
+            "type": "boolean"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ModelConfiguration"
+          },
+          "pendingApproval": {
+            "$ref": "#/components/schemas/PendingApproval"
+          },
+          "processing": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "turnIndex": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "ChatSummary": {
+        "properties": {
+          "chatId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
             "type": "string"
           }
         },
@@ -3897,6 +3984,40 @@
         "required": [
           "dataType"
         ],
+        "type": "object"
+      },
+      "CreateChatRequest": {
+        "properties": {
+          "autoApprove": {
+            "type": "boolean"
+          },
+          "enabledSkills": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 0,
+            "type": "array"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ModelConfiguration"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "text"
+        ],
+        "type": "object"
+      },
+      "CreateChatResponse": {
+        "properties": {
+          "chatId": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "CreateJob": {
@@ -12248,6 +12369,17 @@
         },
         "type": "object"
       },
+      "PendingApproval": {
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "permissionId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "PeriodEntry": {
         "description": "One reporting period — dropdown entry plus bounds for display.",
         "properties": {
@@ -12274,6 +12406,18 @@
           "endDate",
           "id",
           "startDate"
+        ],
+        "type": "object"
+      },
+      "PermissionReplyRequest": {
+        "properties": {
+          "reply": {
+            "pattern": "once|always|reject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply"
         ],
         "type": "object"
       },
@@ -14950,6 +15094,17 @@
         ],
         "type": "object"
       },
+      "RenameChatRequest": {
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "type": "object"
+      },
       "ResetImpactEstimationResponse": {
         "properties": {
           "rowsCleared": {
@@ -15527,6 +15682,9 @@
           },
           "id": {
             "type": "string"
+          },
+          "mutating": {
+            "type": "boolean"
           },
           "revision": {
             "format": "int64",
@@ -16945,6 +17103,34 @@
         "x-tags": [
           "Sources"
         ]
+      },
+      "TableColumnMetrics": {
+        "properties": {
+          "enabled": {
+            "description": "Whether the table\u0027s default column statistics mode is Grepr\u0027s, which collects them on every column without a per-column mode, indexed columns past the first 100 included.",
+            "type": "boolean"
+          },
+          "mode": {
+            "description": "The table\u0027s write.metadata.metrics.default as stored, absent when the table has none. With the setting off, a value here was set outside Grepr.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "TableColumnMetricsUpdate": {
+        "properties": {
+          "enabled": {
+            "description": "Whether to turn Grepr\u0027s column statistics on for the table.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
       },
       "TableConfig": {
         "description": "Per-table configuration overrides. Read-only here; use /datasets/{id}/{tableKey}/config to mutate.",
@@ -19719,6 +19905,10 @@
           "array": {
             "type": "boolean"
           },
+          "arraySize": {
+            "format": "int32",
+            "type": "integer"
+          },
           "as": {
             "type": "object"
           },
@@ -19750,6 +19940,12 @@
           },
           "emptyObject": {
             "type": "boolean"
+          },
+          "fieldNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "float": {
             "format": "float",
@@ -21579,7 +21775,7 @@
     "/v1/agent-suggestions": {
       "get": {
         "description": "Returns the organization\u0027s agent suggestions, newest first, optionally filtered by pipeline, review status, and proposing agent.",
-        "operationId": "list_1",
+        "operationId": "list_2",
         "parameters": [
           {
             "in": "query",
@@ -21662,7 +21858,7 @@
     "/v1/agent-suggestions/{id}": {
       "get": {
         "description": "Returns one agent suggestion, including the template-inputs patch, the job version it was proposed against, and the sample events it was verified with.",
-        "operationId": "get_1",
+        "operationId": "get_2",
         "parameters": [
           {
             "in": "path",
@@ -21806,7 +22002,7 @@
     "/v1/agents": {
       "get": {
         "description": "Returns every agent configured for your organization, newest first.",
-        "operationId": "list_2",
+        "operationId": "list_3",
         "responses": {
           "200": {
             "content": {
@@ -21840,7 +22036,7 @@
       },
       "post": {
         "description": "Creates an agent with the given model configuration, tools and prompt.",
-        "operationId": "create_1",
+        "operationId": "create_2",
         "requestBody": {
           "content": {
             "application/json": {
@@ -22020,7 +22216,7 @@
     "/v1/agents/{id}": {
       "delete": {
         "description": "Soft-deletes an agent. Returns 409 while the agent is still subscribed to any pipeline; unsubscribe it first.",
-        "operationId": "delete_1",
+        "operationId": "delete_2",
         "parameters": [
           {
             "in": "path",
@@ -22057,7 +22253,7 @@
       },
       "get": {
         "description": "Returns a single agent by id.",
-        "operationId": "get_2",
+        "operationId": "get_3",
         "parameters": [
           {
             "in": "path",
@@ -22847,6 +23043,590 @@
         ]
       }
     },
+    "/v1/chat-preferences": {
+      "get": {
+        "description": "Returns the defaults new chats start with for this user. A field the user has never set is null, which the client reads as \"use the default\" rather than \"empty\".",
+        "operationId": "get_1",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatPreferences"
+                }
+              }
+            },
+            "description": "Preferences retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Get the caller\u0027s chat preferences",
+        "tags": [
+          "Chats"
+        ]
+      },
+      "put": {
+        "description": "Replaces the defaults new chats start with for this user. Storing an empty skill list is a deliberate choice to start with none, and is kept as such.",
+        "operationId": "set",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatPreferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Preferences stored"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Set the caller\u0027s chat preferences",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
+    "/v1/chats": {
+      "get": {
+        "description": "Returns one page of the authenticated user\u0027s chats within their org, most-recently-updated first. Metadata only (id, title, timestamps); turn content is read per-chat. Page backwards with the response\u0027s nextCursor.",
+        "operationId": "list_1",
+        "parameters": [
+          {
+            "description": "Opaque cursor from a previous page\u0027s nextCursor; omit for the first page.",
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Requested page size (1–100); defaults to 20.",
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatList"
+                }
+              }
+            },
+            "description": "Chats retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "List the user\u0027s chats",
+        "tags": [
+          "Chats"
+        ]
+      },
+      "post": {
+        "description": "Creates a chat, starts its workflow, and submits the first message. Returns the new chat id; the turn runs asynchronously.",
+        "operationId": "create_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateChatResponse"
+                }
+              }
+            },
+            "description": "Chat created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Create a chat",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
+    "/v1/chats/{chatId}": {
+      "delete": {
+        "description": "Soft-deletes the chat: it stops being listed and is reported as not found, while its row and journal are retained. Cancels any in-flight turn and tears down the sandbox. Idempotent. Returns 202 immediately.",
+        "operationId": "delete_1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Delete accepted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Chat not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Delete a chat",
+        "tags": [
+          "Chats"
+        ]
+      },
+      "get": {
+        "description": "Returns the chat\u0027s status (mirrored from the backing workflow\u0027s Temporal status) and its current turn index. Polled while the chat runs.",
+        "operationId": "status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStatusResponse"
+                }
+              }
+            },
+            "description": "Status retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Chat not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get chat metadata",
+        "tags": [
+          "Chats"
+        ]
+      },
+      "put": {
+        "description": "Signals the chat\u0027s workflow with a new user message. Returns 202 immediately.",
+        "operationId": "append",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Message accepted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Chat not found"
+          },
+          "409": {
+            "description": "Chat is no longer running"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Append a message to a chat",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
+    "/v1/chats/{chatId}/auto-approve": {
+      "put": {
+        "description": "Turns auto-approval on or off for the chat. While on, gated actions run without prompting, and a turn already parked on an approval is released. The setting is persisted and survives a restart of the chat. Returns 202 immediately.",
+        "operationId": "setAutoApprove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoApproveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Auto-approval mode updated"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Chat not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Switch a chat\u0027s auto-approval mode",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
+    "/v1/chats/{chatId}/cancel": {
+      "post": {
+        "description": "Signals the chat\u0027s workflow to abort the current turn and finish as CANCELLED.",
+        "operationId": "cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Cancel requested"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Chat not found"
+          },
+          "409": {
+            "description": "Chat is already finished"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Cancel a chat",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
+    "/v1/chats/{chatId}/permissions/{permissionId}": {
+      "post": {
+        "description": "Signals the chat\u0027s workflow with the user\u0027s approve/reject decision for the gated action it is waiting on, resuming the turn. Returns 202 immediately.",
+        "operationId": "respondToPermission",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "permissionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PermissionReplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Decision accepted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Chat not found"
+          },
+          "409": {
+            "description": "Chat is no longer running"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Reply to a chat\u0027s pending approval",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
+    "/v1/chats/{chatId}/stop": {
+      "post": {
+        "description": "Signals the chat\u0027s workflow to abort the current turn but stay alive, parked for the next message. Returns 202 immediately.",
+        "operationId": "stop",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Stop requested"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Chat not found"
+          },
+          "409": {
+            "description": "Chat is no longer running"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Stop a chat\u0027s in-flight turn",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
+    "/v1/chats/{chatId}/title": {
+      "put": {
+        "description": "Replaces the chat\u0027s display title with a user-chosen one, clamped to the same length as a derived title. Does not reorder the chat list. Returns 202 immediately.",
+        "operationId": "rename",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Chat renamed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Chat not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Rename a chat",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
+    "/v1/chats/{chatId}/turns": {
+      "get": {
+        "description": "Returns journalled turns after the given sequence, oldest first.",
+        "operationId": "turns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "afterSeq",
+            "schema": {
+              "default": -1,
+              "format": "int32",
+              "minimum": -1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "default": 50,
+              "format": "int32",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptTurnsList"
+                }
+              }
+            },
+            "description": "Turns retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Chat not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Stream a chat\u0027s turns by sequence cursor",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
     "/v1/datasets": {
       "get": {
         "description": "Get all datasets for the org the user belongs to.",
@@ -23178,6 +23958,122 @@
           }
         ],
         "summary": "Create or update dataset impact estimation configuration",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
+    "/v1/datasets/{id}/tables/{tableKey}/column-metrics": {
+      "get": {
+        "description": "Returns whether the table\u0027s default column statistics mode is Grepr\u0027s, truncate(16), which collects min/max values and null counts on every column of its data files that has no per-column mode, indexed columns past the first 100 included, so searches can skip files on them. Off by default: the table then has Iceberg\u0027s inferred statistics on its first 100 columns, unless mode reports a default set outside Grepr. spans_raw keeps them on its built-in span fields either way. Supported for logs_raw and spans_raw.",
+        "operationId": "getTableColumnMetrics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tableKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableColumnMetrics"
+                }
+              }
+            },
+            "description": "The table\u0027s setting."
+          },
+          "404": {
+            "description": "Dataset not found, or the table has no such setting."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get a dataset table\u0027s file-statistics setting",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "put": {
+        "description": "Turns Grepr\u0027s default column statistics mode on or off for the table. On sets the table\u0027s write.metadata.metrics.default to truncate(16), replacing any other default; off removes it when it holds that value, and leaves a value set outside Grepr alone. Per-column modes are never changed. On costs about 18 bytes of table metadata per indexed column for each data file. Pipelines writing the dataset apply a change to new files by their next restart, and possibly sooner; files already written keep their statistics. Supported for logs_raw and spans_raw.",
+        "operationId": "putTableColumnMetrics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tableKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TableColumnMetricsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableColumnMetrics"
+                }
+              }
+            },
+            "description": "The table\u0027s setting after the change."
+          },
+          "404": {
+            "description": "Dataset not found, or the table has no such setting."
+          },
+          "409": {
+            "description": "The table kept changing under the request, which running writers can cause; retry."
+          },
+          "422": {
+            "description": "The body is missing, or has no enabled field."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Set a dataset table\u0027s file-statistics setting",
         "tags": [
           "Datasets"
         ]
@@ -23585,7 +24481,7 @@
     "/v1/integrations/anthropic": {
       "get": {
         "description": "Get all Anthropic integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_4",
+        "operationId": "list_5",
         "responses": {
           "200": {
             "content": {
@@ -23616,7 +24512,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Anthropic.",
-        "operationId": "create_3",
+        "operationId": "create_4",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23668,7 +24564,7 @@
     "/v1/integrations/anthropic/{id}": {
       "delete": {
         "description": "Deletes an Anthropic integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_2",
+        "operationId": "delete_3",
         "parameters": [
           {
             "in": "path",
@@ -23702,7 +24598,7 @@
       },
       "get": {
         "description": "Get an Anthropic integration by ID.",
-        "operationId": "get_4",
+        "operationId": "get_5",
         "parameters": [
           {
             "in": "path",
@@ -24188,7 +25084,7 @@
     "/v1/integrations/datadog-mcp": {
       "get": {
         "description": "Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_10",
+        "operationId": "list_8",
         "responses": {
           "200": {
             "content": {
@@ -24219,7 +25115,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a Datadog MCP server.",
-        "operationId": "create_9",
+        "operationId": "create_7",
         "requestBody": {
           "content": {
             "application/json": {
@@ -24271,7 +25167,7 @@
     "/v1/integrations/datadog-mcp/{id}": {
       "delete": {
         "description": "Deletes a Datadog MCP integration. This will delete the associated API keys as well. No-op if already deleted.",
-        "operationId": "delete_8",
+        "operationId": "delete_6",
         "parameters": [
           {
             "in": "path",
@@ -24305,7 +25201,7 @@
       },
       "get": {
         "description": "Get a Datadog MCP integration by ID.",
-        "operationId": "get_10",
+        "operationId": "get_8",
         "parameters": [
           {
             "in": "path",
@@ -24349,7 +25245,7 @@
       },
       "put": {
         "description": "Updates a Datadog MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_8",
+        "operationId": "update_5",
         "parameters": [
           {
             "in": "path",
@@ -24407,7 +25303,7 @@
     "/v1/integrations/datadog-mcp/{id}/api-key": {
       "put": {
         "description": "Creates the DD-API-KEY for a Datadog MCP integration if it doesn\u0027t exist and updates it otherwise.",
-        "operationId": "upsertApiKey_4",
+        "operationId": "upsertApiKey_3",
         "parameters": [
           {
             "in": "path",
@@ -24455,7 +25351,7 @@
     "/v1/integrations/datadog-mcp/{id}/app-key": {
       "put": {
         "description": "Creates the DD-APPLICATION-KEY for a Datadog MCP integration if it doesn\u0027t exist and updates it otherwise.",
-        "operationId": "upsertAppKey_1",
+        "operationId": "upsertAppKey",
         "parameters": [
           {
             "in": "path",
@@ -25182,7 +26078,7 @@
     "/v1/integrations/gemini": {
       "get": {
         "description": "Get all Google Gemini integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_8",
+        "operationId": "list_6",
         "responses": {
           "200": {
             "content": {
@@ -25213,7 +26109,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to Google Gemini.",
-        "operationId": "create_7",
+        "operationId": "create_5",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25265,7 +26161,7 @@
     "/v1/integrations/gemini/{id}": {
       "delete": {
         "description": "Deletes a Gemini integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_6",
+        "operationId": "delete_4",
         "parameters": [
           {
             "in": "path",
@@ -25299,7 +26195,7 @@
       },
       "get": {
         "description": "Get a Gemini integration by ID.",
-        "operationId": "get_8",
+        "operationId": "get_6",
         "parameters": [
           {
             "in": "path",
@@ -25343,7 +26239,7 @@
       },
       "put": {
         "description": "Updates a Gemini integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_6",
+        "operationId": "update_3",
         "parameters": [
           {
             "in": "path",
@@ -25401,7 +26297,7 @@
     "/v1/integrations/gemini/{id}/api-key": {
       "put": {
         "description": "Creates an API key for a Gemini integration if it doesn\u0027t exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_2",
+        "operationId": "upsertApiKey_1",
         "parameters": [
           {
             "in": "path",
@@ -25493,7 +26389,7 @@
     "/v1/integrations/github-mcp": {
       "get": {
         "description": "Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_11",
+        "operationId": "list_9",
         "responses": {
           "200": {
             "content": {
@@ -25524,7 +26420,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a GitHub MCP server.",
-        "operationId": "create_10",
+        "operationId": "create_8",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25576,7 +26472,7 @@
     "/v1/integrations/github-mcp/{id}": {
       "delete": {
         "description": "Deletes a GitHub MCP integration. This will delete the associated token as well. No-op if already deleted.",
-        "operationId": "delete_9",
+        "operationId": "delete_7",
         "parameters": [
           {
             "in": "path",
@@ -25610,7 +26506,7 @@
       },
       "get": {
         "description": "Get a GitHub MCP integration by ID.",
-        "operationId": "get_11",
+        "operationId": "get_9",
         "parameters": [
           {
             "in": "path",
@@ -25654,7 +26550,7 @@
       },
       "put": {
         "description": "Updates a GitHub MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_9",
+        "operationId": "update_6",
         "parameters": [
           {
             "in": "path",
@@ -25712,7 +26608,7 @@
     "/v1/integrations/github-mcp/{id}/api-key": {
       "put": {
         "description": "Creates a token for a GitHub MCP integration if it doesn\u0027t exist and updates it otherwise. If the token is updated while the integration is being used by a pipeline, the new token will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_5",
+        "operationId": "upsertApiKey_4",
         "parameters": [
           {
             "in": "path",
@@ -25759,7 +26655,7 @@
     },
     "/v1/integrations/litellm": {
       "get": {
-        "operationId": "list_9",
+        "operationId": "list_7",
         "responses": {
           "200": {
             "content": {
@@ -25789,7 +26685,7 @@
         ]
       },
       "post": {
-        "operationId": "create_8",
+        "operationId": "create_6",
         "requestBody": {
           "content": {
             "application/json": {
@@ -25840,7 +26736,7 @@
     },
     "/v1/integrations/litellm/{id}": {
       "delete": {
-        "operationId": "delete_7",
+        "operationId": "delete_5",
         "parameters": [
           {
             "in": "path",
@@ -25873,7 +26769,7 @@
         ]
       },
       "get": {
-        "operationId": "get_9",
+        "operationId": "get_7",
         "parameters": [
           {
             "in": "path",
@@ -25916,7 +26812,7 @@
         ]
       },
       "put": {
-        "operationId": "update_7",
+        "operationId": "update_4",
         "parameters": [
           {
             "in": "path",
@@ -25973,7 +26869,7 @@
     },
     "/v1/integrations/litellm/{id}/api-key": {
       "put": {
-        "operationId": "upsertApiKey_3",
+        "operationId": "upsertApiKey_2",
         "parameters": [
           {
             "in": "path",
@@ -26535,7 +27431,7 @@
     "/v1/integrations/openai": {
       "get": {
         "description": "Get all OpenAI integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_15",
+        "operationId": "list_12",
         "responses": {
           "200": {
             "content": {
@@ -26566,7 +27462,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to OpenAI.",
-        "operationId": "create_14",
+        "operationId": "create_11",
         "requestBody": {
           "content": {
             "application/json": {
@@ -26618,7 +27514,7 @@
     "/v1/integrations/openai/{id}": {
       "delete": {
         "description": "Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_13",
+        "operationId": "delete_10",
         "parameters": [
           {
             "in": "path",
@@ -26652,7 +27548,7 @@
       },
       "get": {
         "description": "Get an OpenAI integration by ID.",
-        "operationId": "get_15",
+        "operationId": "get_12",
         "parameters": [
           {
             "in": "path",
@@ -26696,7 +27592,7 @@
       },
       "put": {
         "description": "Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_13",
+        "operationId": "update_9",
         "parameters": [
           {
             "in": "path",
@@ -26754,7 +27650,7 @@
     "/v1/integrations/openai/{id}/api-key": {
       "put": {
         "description": "Creates an API key for an OpenAI integration if it doesn\u0027t exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_9",
+        "operationId": "upsertApiKey_7",
         "parameters": [
           {
             "in": "path",
@@ -27172,7 +28068,7 @@
     "/v1/integrations/pagerduty-mcp": {
       "get": {
         "description": "Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_12",
+        "operationId": "list_10",
         "responses": {
           "200": {
             "content": {
@@ -27203,7 +28099,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a PagerDuty MCP server.",
-        "operationId": "create_11",
+        "operationId": "create_9",
         "requestBody": {
           "content": {
             "application/json": {
@@ -27255,7 +28151,7 @@
     "/v1/integrations/pagerduty-mcp/{id}": {
       "delete": {
         "description": "Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_10",
+        "operationId": "delete_8",
         "parameters": [
           {
             "in": "path",
@@ -27289,7 +28185,7 @@
       },
       "get": {
         "description": "Get a PagerDuty MCP integration by ID.",
-        "operationId": "get_12",
+        "operationId": "get_10",
         "parameters": [
           {
             "in": "path",
@@ -27333,7 +28229,7 @@
       },
       "put": {
         "description": "Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_10",
+        "operationId": "update_7",
         "parameters": [
           {
             "in": "path",
@@ -27391,7 +28287,7 @@
     "/v1/integrations/pagerduty-mcp/{id}/api-key": {
       "put": {
         "description": "Creates an API key for a PagerDuty MCP integration if it doesn\u0027t exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_6",
+        "operationId": "upsertApiKey_5",
         "parameters": [
           {
             "in": "path",
@@ -27786,7 +28682,7 @@
     "/v1/integrations/s3-vector-index": {
       "get": {
         "description": "Retrieves all S3 Vector Index integrations for the organization.",
-        "operationId": "list_17",
+        "operationId": "list_13",
         "responses": {
           "200": {
             "content": {
@@ -27817,7 +28713,7 @@
       },
       "post": {
         "description": "Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.",
-        "operationId": "create_16",
+        "operationId": "create_12",
         "requestBody": {
           "content": {
             "application/json": {
@@ -27862,7 +28758,7 @@
     "/v1/integrations/s3-vector-index/{id}": {
       "delete": {
         "description": "Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn\u0027t exist.",
-        "operationId": "delete_15",
+        "operationId": "delete_11",
         "parameters": [
           {
             "in": "path",
@@ -27896,7 +28792,7 @@
       },
       "get": {
         "description": "Retrieves an S3 Vector Index integration.",
-        "operationId": "get_17",
+        "operationId": "get_13",
         "parameters": [
           {
             "in": "path",
@@ -27940,7 +28836,7 @@
       },
       "put": {
         "description": "Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.",
-        "operationId": "update_15",
+        "operationId": "update_10",
         "parameters": [
           {
             "in": "path",
@@ -27995,7 +28891,7 @@
     "/v1/integrations/slack-mcp": {
       "get": {
         "description": "Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_13",
+        "operationId": "list_11",
         "responses": {
           "200": {
             "content": {
@@ -28026,7 +28922,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a Slack MCP server.",
-        "operationId": "create_12",
+        "operationId": "create_10",
         "requestBody": {
           "content": {
             "application/json": {
@@ -28078,7 +28974,7 @@
     "/v1/integrations/slack-mcp/{id}": {
       "delete": {
         "description": "Deletes a Slack MCP integration. This will delete the associated token as well. No-op if already deleted.",
-        "operationId": "delete_11",
+        "operationId": "delete_9",
         "parameters": [
           {
             "in": "path",
@@ -28112,7 +29008,7 @@
       },
       "get": {
         "description": "Get a Slack MCP integration by ID.",
-        "operationId": "get_13",
+        "operationId": "get_11",
         "parameters": [
           {
             "in": "path",
@@ -28156,7 +29052,7 @@
       },
       "put": {
         "description": "Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_11",
+        "operationId": "update_8",
         "parameters": [
           {
             "in": "path",
@@ -28214,7 +29110,7 @@
     "/v1/integrations/slack-mcp/{id}/api-key": {
       "put": {
         "description": "Creates a token for a Slack MCP integration if it doesn\u0027t exist and updates it otherwise. If the token is updated while the integration is being used by a pipeline, the new token will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_7",
+        "operationId": "upsertApiKey_6",
         "parameters": [
           {
             "in": "path",
@@ -28936,7 +29832,7 @@
     "/v1/integrations/webhooks": {
       "get": {
         "description": "Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.",
-        "operationId": "list_20",
+        "operationId": "list_14",
         "parameters": [
           {
             "description": "Only return integrations targeting this agent.",
@@ -28977,7 +29873,7 @@
       },
       "post": {
         "description": "Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).",
-        "operationId": "create_19",
+        "operationId": "create_13",
         "requestBody": {
           "content": {
             "application/json": {
@@ -29022,7 +29918,7 @@
     "/v1/integrations/webhooks/{id}": {
       "delete": {
         "description": "Deletes a webhook integration. No-op if already deleted.",
-        "operationId": "delete_18",
+        "operationId": "delete_12",
         "parameters": [
           {
             "in": "path",
@@ -29056,7 +29952,7 @@
       },
       "get": {
         "description": "Get a webhook integration by ID.",
-        "operationId": "get_20",
+        "operationId": "get_14",
         "parameters": [
           {
             "in": "path",
@@ -29100,7 +29996,7 @@
       },
       "put": {
         "description": "Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_18",
+        "operationId": "update_11",
         "parameters": [
           {
             "in": "path",
@@ -30053,7 +30949,7 @@
     "/v1/investigations/{investigationId}/cancel": {
       "post": {
         "description": "Durably marks an eligible investigation as CANCELLING and returns 202. An asynchronous reconciler cancels its workflow, if one exists, and it then finalizes as CANCELLED.",
-        "operationId": "cancel",
+        "operationId": "cancel_1",
         "parameters": [
           {
             "in": "path",
@@ -30087,6 +30983,52 @@
           }
         ],
         "summary": "Cancel an investigation",
+        "tags": [
+          "Investigations"
+        ]
+      }
+    },
+    "/v1/investigations/{investigationId}/chat": {
+      "post": {
+        "description": "Creates a new chat seeded with a copy of the investigation\u0027s transcript and returns its chat id, then durably requests the investigation\u0027s cancellation so it does not keep running alongside the chat. Each call opens a separate chat.",
+        "operationId": "chat",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateChatResponse"
+                }
+              }
+            },
+            "description": "Chat opened"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Investigation not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Open an investigation as a chat",
         "tags": [
           "Investigations"
         ]
@@ -30146,7 +31088,7 @@
     "/v1/investigations/{investigationId}/stop": {
       "post": {
         "description": "Durably marks a running investigation as STOPPING and returns 202. An asynchronous reconciler signals the workflow, which pauses at its next turn boundary and records STOPPED; it can then be resumed with a message.",
-        "operationId": "stop",
+        "operationId": "stop_1",
         "parameters": [
           {
             "in": "path",
@@ -30234,7 +31176,7 @@
     "/v1/investigations/{investigationId}/turns": {
       "get": {
         "description": "Returns journalled turns after the given sequence, oldest first.",
-        "operationId": "turns",
+        "operationId": "turns_1",
         "parameters": [
           {
             "in": "path",
@@ -32459,7 +33401,7 @@
     },
     "/v1/skills": {
       "get": {
-        "operationId": "list_3",
+        "operationId": "list_4",
         "parameters": [
           {
             "in": "query",
@@ -32494,7 +33436,7 @@
         "summary": "List skills"
       },
       "post": {
-        "operationId": "create_2",
+        "operationId": "create_3",
         "requestBody": {
           "content": {
             "application/json": {
@@ -32553,7 +33495,7 @@
         "summary": "Archive an organization skill"
       },
       "get": {
-        "operationId": "get_3",
+        "operationId": "get_4",
         "parameters": [
           {
             "in": "path",
@@ -33546,7 +34488,7 @@
     "/v1/users": {
       "get": {
         "description": "Get all users in the system.",
-        "operationId": "list_21",
+        "operationId": "list_15",
         "parameters": [
           {
             "in": "query",
