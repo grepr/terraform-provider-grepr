@@ -5697,7 +5697,8 @@
               "CANCELLED",
               "TIMED_OUT",
               "UNKNOWN",
-              "SCANNED_MAX"
+              "SCANNED_MAX",
+              "QUERY_TOO_LARGE"
             ],
             "type": "string"
           }
