@@ -6639,8 +6639,18 @@
       "GrokParser": {
         "properties": {
           "extractAttribute": {
-            "description": "Optional attribute to extract. Does nothing if it does not refer to a string attribute",
-            "type": "string"
+            "description": "Optional attribute to extract. Does nothing if it does not refer to a string attribute. A dotted string, or an array of literal keys.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
           },
           "grokHelperRules": {
             "default": [],
@@ -10802,8 +10812,18 @@
         "description": "Ordered list of grok rule sets. Each rule set has its own predicate, optional extract attribute, parsing rules, and helper rules. Rule sets extracting from enriched attributes should be ordered after rule sets that populate those attributes.",
         "properties": {
           "extractAttribute": {
-            "description": "Optional attribute to extract from. If null, extracts from the log message. Rules that extract from enriched attributes should be ordered after rules that populate those attributes.",
-            "type": "string"
+            "description": "Optional attribute to extract from. If null, extracts from the log message. Rules that extract from enriched attributes should be ordered after rules that populate those attributes. A dotted string, or an array of literal keys.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
           },
           "grokHelperRules": {
             "default": [],
