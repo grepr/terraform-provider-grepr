@@ -2686,14 +2686,34 @@
             "type": "boolean"
           },
           "source": {
-            "description": "Source attribute path (dot-notation)",
+            "description": "Source attribute path: a dotted string (\"resource.service\" is resource → service), or an array of literal keys ([\"http\", \"user.agent\"]).",
             "example": "resource.service",
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
           },
           "target": {
-            "description": "Target attribute path (dot-notation)",
+            "description": "Target attribute path: a dotted string, or an array of literal keys.",
             "example": "_service",
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
           }
         },
         "required": [
@@ -13073,6 +13093,7 @@
                 "MULTI_GROK_PARSER",
                 "AUTH0_SSO_CONNECTION",
                 "TRINO_QUERY_ENGINE",
+                "REMAP_ARRAY_KEY_PATHS",
                 "UNKNOWN"
               ],
               "type": "string"
