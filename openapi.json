@@ -665,6 +665,9 @@
       },
       "AgentMemoryConfiguration": {
         "properties": {
+          "digest": {
+            "$ref": "#/components/schemas/AgentMemoryHistoryDigest"
+          },
           "embeddingIntegrationId": {
             "type": "string"
           },
@@ -673,6 +676,9 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/AgentMemoryPolicy"
           },
           "searchTool": {
             "type": "boolean"
@@ -690,6 +696,50 @@
             "type": "object"
           },
           "vectorIndexIntegrationId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AgentMemoryHistoryDigest": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "maxItems": {
+            "format": "int32",
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "windowDays": {
+            "format": "int32",
+            "maximum": 90,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AgentMemoryPolicy": {
+        "properties": {
+          "guidance": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "maxSearchesPerInvestigation": {
+            "format": "int32",
+            "maximum": 10,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recordPolicy": {
+            "enum": [
+              "ALWAYS",
+              "NON_BENIGN_ONLY",
+              "REUSABLE_ONLY"
+            ],
             "type": "string"
           }
         },
@@ -6812,6 +6862,59 @@
         ],
         "type": "object"
       },
+      "HumanMemoryEdit": {
+        "properties": {
+          "entityTags": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "expectedRevision": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "rootCause": {
+            "type": "string"
+          },
+          "rootCauseConfidence": {
+            "enum": [
+              "CONFIRMED",
+              "SUSPECTED",
+              "UNKNOWN"
+            ],
+            "type": "string"
+          },
+          "ruledOut": {
+            "type": "string"
+          },
+          "significance": {
+            "enum": [
+              "INCIDENT",
+              "OBSERVATION",
+              "INCONCLUSIVE",
+              "BENIGN"
+            ],
+            "type": "string"
+          },
+          "symptoms": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entityTags",
+          "expectedRevision",
+          "significance",
+          "title"
+        ],
+        "type": "object"
+      },
       "IcebergLogsReplaySource": {
         "properties": {
           "datasetId": {
@@ -7921,6 +8024,14 @@
         },
         "type": "object"
       },
+      "LinkMemoryResponse": {
+        "properties": {
+          "textMerged": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "LiteLlm": {
         "description": "The payload containing integration data.",
         "properties": {
@@ -8240,15 +8351,15 @@
           "statusReservedAttributes": {
             "default": [
               "log.level",
+              "level",
               "status",
               "severity",
-              "level",
               "syslog.severity",
               "L"
             ],
             "description": "Attributes to search for status values",
             "items": {
-              "default": "[\"log.level\",\"status\",\"severity\",\"level\",\"syslog.severity\",\"L\"]",
+              "default": "[\"log.level\",\"level\",\"status\",\"severity\",\"syslog.severity\",\"L\"]",
               "description": "Attributes to search for status values",
               "type": "string"
             },
@@ -9863,6 +9974,64 @@
         },
         "type": "object"
       },
+      "MemoryDetail": {
+        "properties": {
+          "contentRevision": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "linkCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "lockedTagKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "memory": {
+            "$ref": "#/components/schemas/MemorySearchResult"
+          },
+          "recurrences": {
+            "items": {
+              "$ref": "#/components/schemas/RecurrenceLink"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "MemoryListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MemorySearchResult"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MemoryReview": {
+        "properties": {
+          "editedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "verdictAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "verdictNote": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "MemorySearchRequest": {
         "properties": {
           "agentId": {
@@ -9875,8 +10044,12 @@
             "default": {},
             "type": "object"
           },
+          "includeVocabulary": {
+            "default": false,
+            "type": "boolean"
+          },
           "limit": {
-            "default": 10,
+            "default": 3,
             "format": "int32",
             "maximum": 50,
             "minimum": 1,
@@ -9898,18 +10071,31 @@
             "format": "date-time",
             "type": "string"
           },
-          "significance": {
+          "significances": {
+            "default": [],
+            "items": {
+              "enum": [
+                "INCIDENT",
+                "OBSERVATION",
+                "INCONCLUSIVE",
+                "BENIGN"
+              ],
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "verbosity": {
             "enum": [
-              "INCIDENT",
-              "OBSERVATION",
-              "INCONCLUSIVE",
-              "BENIGN"
+              "COMPACT",
+              "FULL"
             ],
             "type": "string"
           }
         },
         "required": [
-          "mode"
+          "mode",
+          "significances"
         ],
         "type": "object"
       },
@@ -9923,6 +10109,9 @@
               "type": "array"
             },
             "type": "object"
+          },
+          "hasMore": {
+            "type": "boolean"
           },
           "note": {
             "type": "string"
@@ -9938,6 +10127,13 @@
           },
           "semanticSearchUnavailable": {
             "type": "boolean"
+          },
+          "verbosity": {
+            "enum": [
+              "COMPACT",
+              "FULL"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -9954,6 +10150,10 @@
           "investigationId": {
             "type": "string"
           },
+          "lastSeenAt": {
+            "format": "date-time",
+            "type": "string"
+          },
           "lastSeenDays": {
             "format": "int64",
             "type": "integer"
@@ -9962,7 +10162,8 @@
             "enum": [
               "SEMANTIC",
               "TEXT",
-              "TIMELINE"
+              "TIMELINE",
+              "LOOKUP"
             ],
             "type": "string"
           },
@@ -9985,6 +10186,9 @@
           "resolution": {
             "type": "string"
           },
+          "review": {
+            "$ref": "#/components/schemas/MemoryReview"
+          },
           "rootCause": {
             "type": "string"
           },
@@ -9998,6 +10202,10 @@
           },
           "ruledOut": {
             "type": "string"
+          },
+          "score": {
+            "format": "double",
+            "type": "number"
           },
           "significance": {
             "enum": [
@@ -10021,6 +10229,30 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "MemoryTagCounts": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TagCountItem"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "MemoryVerdictRequest": {
+        "properties": {
+          "note": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
         "type": "object"
       },
       "MergeMapAttributeAction": {
@@ -14960,6 +15192,9 @@
           "ruledOut": {
             "type": "string"
           },
+          "searchableBySimilarity": {
+            "type": "boolean"
+          },
           "significance": {
             "enum": [
               "INCIDENT",
@@ -14996,6 +15231,21 @@
           "nearestSimilarity": {
             "format": "double",
             "type": "number"
+          },
+          "review": {
+            "$ref": "#/components/schemas/MemoryReview"
+          }
+        },
+        "type": "object"
+      },
+      "RecurrenceLink": {
+        "properties": {
+          "investigationId": {
+            "type": "string"
+          },
+          "linkedAt": {
+            "format": "date-time",
+            "type": "string"
           }
         },
         "type": "object"
@@ -17409,6 +17659,18 @@
           "type",
           "values"
         ],
+        "type": "object"
+      },
+      "TagCountItem": {
+        "properties": {
+          "count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "TagKeyNode": {
@@ -21607,6 +21869,98 @@
         ]
       }
     },
+    "/v1/agent-memory": {
+      "get": {
+        "operationId": "list_5",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tag",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "significance",
+            "schema": {
+              "items": {
+                "enum": [
+                  "INCIDENT",
+                  "OBSERVATION",
+                  "INCONCLUSIVE",
+                  "BENIGN"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "verdict",
+            "schema": {
+              "enum": [
+                "WRONG",
+                "NONE"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "default": 25,
+              "format": "int32",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryListResponse"
+                }
+              }
+            },
+            "description": "One page of memories"
+          }
+        },
+        "summary": "List this organization\u0027s investigation memories, most recently seen first, filtered by tags (key\u003dvalue, ANDed), agent, significance, verdict or text. Pass nextCursor back as after for the next page.",
+        "tags": [
+          "Agent Memory"
+        ]
+      }
+    },
     "/v1/agent-memory/search": {
       "post": {
         "operationId": "search",
@@ -21632,6 +21986,43 @@
           }
         },
         "summary": "Search past investigation memories for the closest CANDIDATES — for the agent to judge for itself, not a ranked answer",
+        "tags": [
+          "Agent Memory"
+        ]
+      }
+    },
+    "/v1/agent-memory/tags": {
+      "get": {
+        "operationId": "tags",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "agentId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryTagCounts"
+                }
+              }
+            },
+            "description": "The counts"
+          }
+        },
+        "summary": "Count the tag keys in use in this organization\u0027s memories, or one key\u0027s values when key is given. Pass agentId to count only that agent\u0027s memories.",
         "tags": [
           "Agent Memory"
         ]
@@ -21669,10 +22060,17 @@
         },
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkMemoryResponse"
+                }
+              }
+            },
             "description": "The link was applied"
           }
         },
-        "summary": "Record that this investigation is another occurrence of a memory you already found, instead of recording a second copy of it. Counts a recurrence against that memory and fills in anything it was missing; it must belong to the same agent.",
+        "summary": "Record that this investigation is another occurrence of a memory you already found, instead of recording a second copy of it. Counts a recurrence against that memory and fills in anything it was missing, unless a person edited it: then it takes none of the request\u0027s text and textMerged is false. A memory a person marked wrong refuses a new link with 409; only a retried link from an investigation it already counts is accepted, taking no text. The memory must belong to the same agent.",
         "tags": [
           "Agent Memory"
         ]
@@ -21713,6 +22111,147 @@
           }
         },
         "summary": "Record what this investigation concluded. Writes only this investigation\u0027s own memory, and may be called again to correct or extend it — a field you leave out keeps what was already recorded, so a later call cannot lose an earlier finding.",
+        "tags": [
+          "Agent Memory"
+        ]
+      }
+    },
+    "/v1/agent-memory/{memoryId}": {
+      "delete": {
+        "operationId": "delete_3",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memoryId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        },
+        "summary": "Delete a memory and the recurrence links pointing at it. The linked investigations keep their transcripts.",
+        "tags": [
+          "Agent Memory"
+        ]
+      },
+      "get": {
+        "operationId": "get_5",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memoryId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryDetail"
+                }
+              }
+            },
+            "description": "The memory and its recurrences"
+          }
+        },
+        "summary": "Read one memory in full by its id (its investigation id), with the investigations linked to it as recurrences",
+        "tags": [
+          "Agent Memory"
+        ]
+      },
+      "put": {
+        "operationId": "edit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memoryId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HumanMemoryEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Edited"
+          }
+        },
+        "summary": "Edit a memory as a person. Every editable field is replaced; tags derived from the triggering signal are kept. Refused with 409 if the memory changed since expectedRevision. An edit that changes nothing writes nothing.",
+        "tags": [
+          "Agent Memory"
+        ]
+      }
+    },
+    "/v1/agent-memory/{memoryId}/verdict": {
+      "delete": {
+        "operationId": "clearVerdict",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memoryId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Verdict lifted"
+          }
+        },
+        "summary": "Lift a person\u0027s verdict that a memory is wrong.",
+        "tags": [
+          "Agent Memory"
+        ]
+      },
+      "put": {
+        "operationId": "setVerdict",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memoryId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryVerdictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Marked wrong"
+          }
+        },
+        "summary": "Mark a memory\u0027s conclusion wrong. Agents that find it are told a person rejected it, with this note.",
         "tags": [
           "Agent Memory"
         ]
@@ -24622,7 +25161,7 @@
     "/v1/integrations/anthropic": {
       "get": {
         "description": "Get all Anthropic integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_5",
+        "operationId": "list_6",
         "responses": {
           "200": {
             "content": {
@@ -24705,7 +25244,7 @@
     "/v1/integrations/anthropic/{id}": {
       "delete": {
         "description": "Deletes an Anthropic integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_3",
+        "operationId": "delete_4",
         "parameters": [
           {
             "in": "path",
@@ -24739,7 +25278,7 @@
       },
       "get": {
         "description": "Get an Anthropic integration by ID.",
-        "operationId": "get_5",
+        "operationId": "get_6",
         "parameters": [
           {
             "in": "path",
@@ -25225,7 +25764,7 @@
     "/v1/integrations/datadog-mcp": {
       "get": {
         "description": "Get all Datadog MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_8",
+        "operationId": "list_9",
         "responses": {
           "200": {
             "content": {
@@ -25308,7 +25847,7 @@
     "/v1/integrations/datadog-mcp/{id}": {
       "delete": {
         "description": "Deletes a Datadog MCP integration. This will delete the associated API keys as well. No-op if already deleted.",
-        "operationId": "delete_6",
+        "operationId": "delete_7",
         "parameters": [
           {
             "in": "path",
@@ -25342,7 +25881,7 @@
       },
       "get": {
         "description": "Get a Datadog MCP integration by ID.",
-        "operationId": "get_8",
+        "operationId": "get_9",
         "parameters": [
           {
             "in": "path",
@@ -26219,7 +26758,7 @@
     "/v1/integrations/gemini": {
       "get": {
         "description": "Get all Google Gemini integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_6",
+        "operationId": "list_7",
         "responses": {
           "200": {
             "content": {
@@ -26302,7 +26841,7 @@
     "/v1/integrations/gemini/{id}": {
       "delete": {
         "description": "Deletes a Gemini integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_4",
+        "operationId": "delete_5",
         "parameters": [
           {
             "in": "path",
@@ -26336,7 +26875,7 @@
       },
       "get": {
         "description": "Get a Gemini integration by ID.",
-        "operationId": "get_6",
+        "operationId": "get_7",
         "parameters": [
           {
             "in": "path",
@@ -26530,7 +27069,7 @@
     "/v1/integrations/github-mcp": {
       "get": {
         "description": "Get all GitHub MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_9",
+        "operationId": "list_10",
         "responses": {
           "200": {
             "content": {
@@ -26613,7 +27152,7 @@
     "/v1/integrations/github-mcp/{id}": {
       "delete": {
         "description": "Deletes a GitHub MCP integration. This will delete the associated token as well. No-op if already deleted.",
-        "operationId": "delete_7",
+        "operationId": "delete_8",
         "parameters": [
           {
             "in": "path",
@@ -26647,7 +27186,7 @@
       },
       "get": {
         "description": "Get a GitHub MCP integration by ID.",
-        "operationId": "get_9",
+        "operationId": "get_10",
         "parameters": [
           {
             "in": "path",
@@ -26796,7 +27335,7 @@
     },
     "/v1/integrations/litellm": {
       "get": {
-        "operationId": "list_7",
+        "operationId": "list_8",
         "responses": {
           "200": {
             "content": {
@@ -26877,7 +27416,7 @@
     },
     "/v1/integrations/litellm/{id}": {
       "delete": {
-        "operationId": "delete_5",
+        "operationId": "delete_6",
         "parameters": [
           {
             "in": "path",
@@ -26910,7 +27449,7 @@
         ]
       },
       "get": {
-        "operationId": "get_7",
+        "operationId": "get_8",
         "parameters": [
           {
             "in": "path",
@@ -27572,7 +28111,7 @@
     "/v1/integrations/openai": {
       "get": {
         "description": "Get all OpenAI integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_12",
+        "operationId": "list_13",
         "responses": {
           "200": {
             "content": {
@@ -27655,7 +28194,7 @@
     "/v1/integrations/openai/{id}": {
       "delete": {
         "description": "Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_10",
+        "operationId": "delete_11",
         "parameters": [
           {
             "in": "path",
@@ -27689,7 +28228,7 @@
       },
       "get": {
         "description": "Get an OpenAI integration by ID.",
-        "operationId": "get_12",
+        "operationId": "get_13",
         "parameters": [
           {
             "in": "path",
@@ -28209,7 +28748,7 @@
     "/v1/integrations/pagerduty-mcp": {
       "get": {
         "description": "Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_10",
+        "operationId": "list_11",
         "responses": {
           "200": {
             "content": {
@@ -28292,7 +28831,7 @@
     "/v1/integrations/pagerduty-mcp/{id}": {
       "delete": {
         "description": "Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_8",
+        "operationId": "delete_9",
         "parameters": [
           {
             "in": "path",
@@ -28326,7 +28865,7 @@
       },
       "get": {
         "description": "Get a PagerDuty MCP integration by ID.",
-        "operationId": "get_10",
+        "operationId": "get_11",
         "parameters": [
           {
             "in": "path",
@@ -28823,7 +29362,7 @@
     "/v1/integrations/s3-vector-index": {
       "get": {
         "description": "Retrieves all S3 Vector Index integrations for the organization.",
-        "operationId": "list_13",
+        "operationId": "list_14",
         "responses": {
           "200": {
             "content": {
@@ -28899,7 +29438,7 @@
     "/v1/integrations/s3-vector-index/{id}": {
       "delete": {
         "description": "Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn\u0027t exist.",
-        "operationId": "delete_11",
+        "operationId": "delete_12",
         "parameters": [
           {
             "in": "path",
@@ -28933,7 +29472,7 @@
       },
       "get": {
         "description": "Retrieves an S3 Vector Index integration.",
-        "operationId": "get_13",
+        "operationId": "get_14",
         "parameters": [
           {
             "in": "path",
@@ -29032,7 +29571,7 @@
     "/v1/integrations/slack-mcp": {
       "get": {
         "description": "Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_11",
+        "operationId": "list_12",
         "responses": {
           "200": {
             "content": {
@@ -29115,7 +29654,7 @@
     "/v1/integrations/slack-mcp/{id}": {
       "delete": {
         "description": "Deletes a Slack MCP integration. This will delete the associated token as well. No-op if already deleted.",
-        "operationId": "delete_9",
+        "operationId": "delete_10",
         "parameters": [
           {
             "in": "path",
@@ -29149,7 +29688,7 @@
       },
       "get": {
         "description": "Get a Slack MCP integration by ID.",
-        "operationId": "get_11",
+        "operationId": "get_12",
         "parameters": [
           {
             "in": "path",
@@ -29973,7 +30512,7 @@
     "/v1/integrations/webhooks": {
       "get": {
         "description": "Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.",
-        "operationId": "list_14",
+        "operationId": "list_15",
         "parameters": [
           {
             "description": "Only return integrations targeting this agent.",
@@ -30059,7 +30598,7 @@
     "/v1/integrations/webhooks/{id}": {
       "delete": {
         "description": "Deletes a webhook integration. No-op if already deleted.",
-        "operationId": "delete_12",
+        "operationId": "delete_13",
         "parameters": [
           {
             "in": "path",
@@ -30093,7 +30632,7 @@
       },
       "get": {
         "description": "Get a webhook integration by ID.",
-        "operationId": "get_14",
+        "operationId": "get_15",
         "parameters": [
           {
             "in": "path",
@@ -34629,7 +35168,7 @@
     "/v1/users": {
       "get": {
         "description": "Get all users in the system.",
-        "operationId": "list_15",
+        "operationId": "list_16",
         "parameters": [
           {
             "in": "query",
