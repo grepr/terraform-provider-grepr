@@ -8201,6 +8201,9 @@
             },
             "type": "array"
           },
+          "statusMapping": {
+            "$ref": "#/components/schemas/StatusMapping"
+          },
           "statusPreserveSource": {
             "default": true,
             "description": "When true, preserves the source status attribute after remapping instead of removing it. Defaults to true (source is preserved).",
@@ -16913,6 +16916,102 @@
             "description": "Developer-facing human readable error message",
             "example": "Request timed out",
             "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "StatusMapping": {
+        "description": "Maps raw status values to severities.",
+        "properties": {
+          "debug": {
+            "$ref": "#/components/schemas/StatusValues"
+          },
+          "error": {
+            "$ref": "#/components/schemas/StatusValues"
+          },
+          "fatal": {
+            "$ref": "#/components/schemas/StatusValues"
+          },
+          "info": {
+            "$ref": "#/components/schemas/StatusValues"
+          },
+          "numberRanges": {
+            "default": [],
+            "description": "Inclusive ranges mapping numeric status values to severities.",
+            "items": {
+              "$ref": "#/components/schemas/StatusNumberRange"
+            },
+            "type": "array"
+          },
+          "trace": {
+            "$ref": "#/components/schemas/StatusValues"
+          },
+          "warn": {
+            "$ref": "#/components/schemas/StatusValues"
+          }
+        },
+        "type": "object"
+      },
+      "StatusNumberRange": {
+        "description": "Maps numeric status values within an inclusive range to a severity.",
+        "properties": {
+          "max": {
+            "description": "Inclusive upper bound.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "min": {
+            "description": "Inclusive lower bound.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "severity": {
+            "description": "Severity assigned to numbers in a status number range.",
+            "enum": [
+              "TRACE",
+              "DEBUG",
+              "INFO",
+              "WARN",
+              "ERROR",
+              "FATAL",
+              "KEEP_NUMBER"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "max",
+          "min",
+          "severity"
+        ],
+        "type": "object"
+      },
+      "StatusValues": {
+        "description": "Raw status strings that map to one severity. Matching is case-sensitive.",
+        "properties": {
+          "exact": {
+            "default": [],
+            "description": "Status strings that map to this severity when equal to the value.",
+            "example": [
+              "warn",
+              "WARN"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "prefixes": {
+            "default": [],
+            "description": "Status strings that map to this severity when the value starts with them. An exact match wins over any prefix, and the longest matching prefix wins.",
+            "example": [
+              "w",
+              "W"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "type": "object"
