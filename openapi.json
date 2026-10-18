@@ -2242,8 +2242,8 @@
             "type": "string"
           },
           "integrationMaxTokens": {
-            "description": "Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.",
-            "example": 20000000,
+            "description": "Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 200,000,000.",
+            "example": 200000000,
             "format": "int64",
             "minimum": 1,
             "type": "integer"
@@ -5984,8 +5984,8 @@
             "type": "string"
           },
           "integrationMaxTokens": {
-            "description": "Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.",
-            "example": 20000000,
+            "description": "Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 200,000,000.",
+            "example": 200000000,
             "format": "int64",
             "minimum": 1,
             "type": "integer"
@@ -7936,8 +7936,8 @@
             "type": "string"
           },
           "integrationMaxTokens": {
-            "description": "Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 20,000,000.",
-            "example": 20000000,
+            "description": "Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 200,000,000.",
+            "example": 200000000,
             "format": "int64",
             "minimum": 1,
             "type": "integer"
