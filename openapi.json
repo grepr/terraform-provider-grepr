@@ -15574,7 +15574,7 @@
         "description": "The payload containing integration data.",
         "properties": {
           "assumeRoleArn": {
-            "description": "The ARN of the role to assume when accessing the S3 bucket",
+            "description": "The ARN of the role Grepr assumes to access the S3 bucket. Leave it empty to use your organization\u0027s role, the only one Grepr\u0027s hosted sites accept; the bucket\u0027s resource policy must let that role in. It can\u0027t be changed after the integration is created.",
             "pattern": "^(arn:aws:iam::[0-9]{12}:role/.*)?$",
             "type": "string"
           },
