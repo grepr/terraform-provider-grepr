@@ -290,6 +290,12 @@
             ],
             "type": "string"
           },
+          "description": {
+            "description": "What the agent handles, shown to other agents when they list the agents; null for none.",
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string"
+          },
           "enabledMcpIntegrations": {
             "items": {
               "$ref": "#/components/schemas/AgentMcpIntegrations"
@@ -309,6 +315,17 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "issueHandoffMode": {
+            "description": "Whether the agent may put issues in Ready; null falls back to REQUIRE_TRIAGE.",
+            "enum": [
+              "REQUIRE_TRIAGE",
+              "ALLOW_READY"
+            ],
+            "type": "string"
+          },
+          "issuePickup": {
+            "$ref": "#/components/schemas/AgentIssuePickup"
           },
           "maxConcurrentInvestigations": {
             "default": 3,
@@ -342,6 +359,10 @@
           },
           "systemPrompt": {
             "type": "string"
+          },
+          "worksOnIssues": {
+            "description": "Whether the agent files and works on issues; null means true.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -382,6 +403,12 @@
             ],
             "type": "string"
           },
+          "description": {
+            "description": "What the agent handles, shown to other agents when they list the agents; null for none.",
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string"
+          },
           "enabledMcpIntegrations": {
             "items": {
               "$ref": "#/components/schemas/AgentMcpIntegrations"
@@ -401,6 +428,17 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "issueHandoffMode": {
+            "description": "Whether the agent may put issues in Ready; null falls back to REQUIRE_TRIAGE.",
+            "enum": [
+              "REQUIRE_TRIAGE",
+              "ALLOW_READY"
+            ],
+            "type": "string"
+          },
+          "issuePickup": {
+            "$ref": "#/components/schemas/AgentIssuePickup"
           },
           "maxConcurrentInvestigations": {
             "format": "int32",
@@ -429,6 +467,10 @@
           },
           "systemPrompt": {
             "type": "string"
+          },
+          "worksOnIssues": {
+            "description": "Whether the agent files and works on issues; every agent reads them.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -468,6 +510,12 @@
             ],
             "type": "string"
           },
+          "description": {
+            "description": "What the agent handles, shown to other agents; required, like worksOnIssues, and empty for none.",
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string"
+          },
           "enabledMcpIntegrations": {
             "items": {
               "$ref": "#/components/schemas/AgentMcpIntegrations"
@@ -487,6 +535,17 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "issueHandoffMode": {
+            "description": "Whether the agent may put issues in Ready; required, like worksOnIssues.",
+            "enum": [
+              "REQUIRE_TRIAGE",
+              "ALLOW_READY"
+            ],
+            "type": "string"
+          },
+          "issuePickup": {
+            "$ref": "#/components/schemas/AgentIssuePickup"
           },
           "maxConcurrentInvestigations": {
             "format": "int32",
@@ -523,17 +582,25 @@
             "format": "int32",
             "minimum": 0,
             "type": "integer"
+          },
+          "worksOnIssues": {
+            "description": "Whether the agent files and works on issues; required, since an update replaces the agent and an omitted switch would turn issue work off unnoticed.",
+            "type": "boolean"
           }
         },
         "required": [
           "changeApprovalMode",
+          "description",
           "enabledMcpIntegrations",
           "enabledSkills",
           "enabledTools",
+          "issueHandoffMode",
+          "issuePickup",
           "modelConfiguration",
           "name",
           "serviceAccountId",
-          "systemPrompt"
+          "systemPrompt",
+          "worksOnIssues"
         ],
         "type": "object"
       },
@@ -565,6 +632,67 @@
           "total": {
             "format": "int32",
             "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AgentIssuePickup": {
+        "description": "Whether an agent picks up Ready issues on its own, and which: the board\u0027s own filters, applied to Ready issues nobody is working on. The server checks the filters\u0027 limits and teams when the agent is saved.",
+        "properties": {
+          "enabled": {
+            "description": "Whether the dispatcher starts the agent on Ready issues; it also needs Works on issues.",
+            "type": "boolean"
+          },
+          "entities": {
+            "additionalProperties": {
+              "description": "Issues with every one of these entity keys, each with any of its values, as the issue search\u0027s entity filter; null or empty for any.",
+              "items": {
+                "description": "Issues with every one of these entity keys, each with any of its values, as the issue search\u0027s entity filter; null or empty for any.",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Issues with every one of these entity keys, each with any of its values, as the issue search\u0027s entity filter; null or empty for any.",
+            "type": "object"
+          },
+          "labels": {
+            "description": "Issues carrying every one of these labels; null or empty for any.",
+            "items": {
+              "description": "Issues carrying every one of these labels; null or empty for any.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "maxRuns": {
+            "description": "Pickup starts no run while the agent has this many runs on issues, queued or running, handed or picked up; people\u0027s handoffs aren\u0027t held to it, and pickups use the agent\u0027s run slots. Null for 1. At most the agent\u0027s concurrency limit, and below it when the agent discards work at its limit, so a slot stays free for alerts and handoffs.",
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "priority": {
+            "description": "`P0` to `P3`: issues of this priority or more urgent; null for any.",
+            "pattern": "P[0-3]",
+            "type": "string"
+          },
+          "teamIds": {
+            "description": "Issues on any of these teams; null or empty for any the agent can reach.",
+            "items": {
+              "description": "Issues on any of these teams; null or empty for any the agent can reach.",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "AgentIssueScopes": {
+        "description": "Whose issues an agent reads and whose it can work on, from its service account\u0027s issue scopes.",
+        "properties": {
+          "reads": {
+            "$ref": "#/components/schemas/IssueScopeView"
+          },
+          "worksOn": {
+            "$ref": "#/components/schemas/IssueScopeView"
           }
         },
         "type": "object"
@@ -681,6 +809,8 @@
             "$ref": "#/components/schemas/AgentMemoryPolicy"
           },
           "searchTool": {
+            "deprecated": true,
+            "description": "Ignored: every agent can search memories.",
             "type": "boolean"
           },
           "signalTagMappings": {
@@ -779,12 +909,22 @@
         "type": "object"
       },
       "AgentRosterEntry": {
+        "description": "What one agent may learn about another: enough to decide whose memory is worth querying, or how to put an issue in Ready so that agent picks it up, and nothing more.",
         "properties": {
+          "description": {
+            "description": "What the agent handles, as its configuration says, or null when it says nothing.",
+            "type": "string"
+          },
           "id": {
+            "description": "The agent\u0027s id, as named in a cross-agent memory search\u0027s `agentId`.",
             "type": "string"
           },
           "name": {
+            "description": "The agent\u0027s human-readable name.",
             "type": "string"
+          },
+          "picksUp": {
+            "$ref": "#/components/schemas/PickupFilters"
           }
         },
         "type": "object"
@@ -4090,6 +4230,127 @@
         },
         "type": "object"
       },
+      "CreateIssueRequest": {
+        "description": "Files a new issue. Creating never deduplicates: search first, and update or record an occurrence on an existing issue instead of filing a second one. The reporter, number and timestamps come from the caller and the server, never from the request.",
+        "properties": {
+          "confidence": {
+            "description": "How sure the reporter is that the problem is real.",
+            "enum": [
+              "CONFIRMED",
+              "LIKELY",
+              "UNVERIFIED"
+            ],
+            "type": "string"
+          },
+          "description": {
+            "description": "The current understanding, in markdown, or null for none.",
+            "maxLength": 32768,
+            "minLength": 0,
+            "type": "string"
+          },
+          "entities": {
+            "additionalProperties": {
+              "description": "The `entity:*` tags it concerns; an unprefixed key is put in the `entity:` namespace.",
+              "type": "string"
+            },
+            "description": "The `entity:*` tags it concerns; an unprefixed key is put in the `entity:` namespace.",
+            "type": "object"
+          },
+          "evidence": {
+            "description": "Things a person can open to check the claim.",
+            "items": {
+              "$ref": "#/components/schemas/IssueEvidence"
+            },
+            "maxItems": 50,
+            "minItems": 0,
+            "type": "array"
+          },
+          "expiresAt": {
+            "description": "When the issue stops applying.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "fingerprint": {
+            "description": "An optional free-form key for exact-match search.",
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string"
+          },
+          "labels": {
+            "description": "Categories; reuse the labels search reports as in use.",
+            "items": {
+              "description": "Categories; reuse the labels search reports as in use.",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 0,
+            "type": "array"
+          },
+          "links": {
+            "description": "Related pipelines, investigations, memories, suggestions and external tickets.",
+            "items": {
+              "$ref": "#/components/schemas/IssueLink"
+            },
+            "maxItems": 50,
+            "minItems": 0,
+            "type": "array"
+          },
+          "nextStep": {
+            "description": "The concrete next action and who it waits on.",
+            "maxLength": 4096,
+            "minLength": 0,
+            "type": "string"
+          },
+          "priority": {
+            "description": "How soon someone should act; agents must set it. A person who leaves it null files at `P2`, unlocked, so triage can set it.",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3"
+            ],
+            "type": "string"
+          },
+          "revisitAt": {
+            "description": "When someone should check back.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "description": "The open state to file it in; null files it in `TRIAGE`. Agents may file only in `TRIAGE`, or `READY` when their handoff mode allows it.",
+            "enum": [
+              "TRIAGE",
+              "READY",
+              "IN_PROGRESS",
+              "WAITING",
+              "MONITORING",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "teamIds": {
+            "description": "The teams that may see it; people only, from the teams they can edit issues of (any for an organization-wide person). Absent: a team-scoped person\u0027s own teams, and none for an organization-wide person, which keeps the issue to organization-wide users.",
+            "items": {
+              "description": "The teams that may see it; people only, from the teams they can edit issues of (any for an organization-wide person). Absent: a team-scoped person\u0027s own teams, and none for an organization-wide person, which keeps the issue to organization-wide users.",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 0,
+            "type": "array"
+          },
+          "title": {
+            "description": "One line naming the problem, not the symptom\u0027s timestamp.",
+            "maxLength": 200,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "confidence",
+          "title"
+        ],
+        "type": "object"
+      },
       "CreateJob": {
         "description": "Attributes of the Grepr Job to create",
         "properties": {
@@ -5434,6 +5695,26 @@
         "description": "Strategy to read all files from the beginning",
         "type": "object"
       },
+      "EditIssueCommentRequest": {
+        "description": "Replaces the body of a comment its author wrote; people only.",
+        "properties": {
+          "body": {
+            "description": "The new markdown body.",
+            "maxLength": 16384,
+            "minLength": 0,
+            "type": "string"
+          },
+          "version": {
+            "description": "The version the edit was written against; a stale one is rejected with 409 and the current issue. Null edits against whatever is current.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "type": "object"
+      },
       "EffectivePartitionField": {
         "description": "Full effective partition spec, including system-controlled rows.",
         "properties": {
@@ -5994,6 +6275,23 @@
           },
           "metricName": {
             "$ref": "#/components/schemas/MetricNameFilter"
+          }
+        },
+        "type": "object"
+      },
+      "FinishAssignmentRequest": {
+        "description": "Marks the caller\u0027s own assignment done. To pick the work up again, join the issue again.",
+        "properties": {
+          "note": {
+            "description": "What the caller did, or null.",
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "version": {
+            "description": "The version the finish was decided against, or null for whatever is current.",
+            "format": "int32",
+            "type": "integer"
           }
         },
         "type": "object"
@@ -7404,6 +7702,1047 @@
         },
         "type": "object"
       },
+      "Issue": {
+        "description": "One durable problem or task on the organization\u0027s issue board.",
+        "properties": {
+          "closedAt": {
+            "description": "When it closed, or null while open.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "confidence": {
+            "description": "How sure the reporter is that the problem is real.",
+            "enum": [
+              "CONFIRMED",
+              "LIKELY",
+              "UNVERIFIED"
+            ],
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "When it was filed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "description": "The current understanding, in markdown, kept current rather than appended to.",
+            "type": "string"
+          },
+          "duplicateOf": {
+            "description": "The surviving issue, set exactly when resolved as `DUPLICATE`; null in a response when the reader can\u0027t see the survivor.",
+            "type": "string"
+          },
+          "duplicateOfHidden": {
+            "description": "True in a response whose reader can\u0027t see the surviving issue.",
+            "type": "boolean"
+          },
+          "entities": {
+            "additionalProperties": {
+              "description": "The `entity:*` tags it concerns, the same vocabulary as memory tags, sorted by key.",
+              "type": "string"
+            },
+            "description": "The `entity:*` tags it concerns, the same vocabulary as memory tags, sorted by key.",
+            "type": "object"
+          },
+          "evidence": {
+            "description": "Things a person can open to check the claim.",
+            "items": {
+              "$ref": "#/components/schemas/IssueEvidence"
+            },
+            "type": "array"
+          },
+          "expiresAt": {
+            "description": "When the issue stops applying and closes as `EXPIRED`, or null.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "fingerprint": {
+            "description": "An optional free-form key for exact-match search, or null.",
+            "type": "string"
+          },
+          "firstSeenAt": {
+            "description": "The first sighting, or null before any.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "description": "The issue id.",
+            "type": "string"
+          },
+          "labels": {
+            "description": "Categories, such as `cost`, sorted.",
+            "items": {
+              "description": "Categories, such as `cost`, sorted.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "lastSeenAt": {
+            "description": "The latest sighting, or when it was filed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "links": {
+            "description": "Related pipelines, investigations, memories, suggestions and external tickets.",
+            "items": {
+              "$ref": "#/components/schemas/IssueLink"
+            },
+            "type": "array"
+          },
+          "locks": {
+            "$ref": "#/components/schemas/IssueLocks"
+          },
+          "nextStep": {
+            "description": "The concrete next action and who it waits on, or null.",
+            "type": "string"
+          },
+          "number": {
+            "description": "The short per-organization handle, shown as `#142`.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "occurrenceCount": {
+            "description": "How many investigations sighted it.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "priority": {
+            "description": "How soon someone should act.",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3"
+            ],
+            "type": "string"
+          },
+          "regressed": {
+            "description": "Whether it reopened on a new sighting after being fixed; cleared on its next close.",
+            "type": "boolean"
+          },
+          "reporter": {
+            "$ref": "#/components/schemas/IssueActor"
+          },
+          "resolution": {
+            "description": "Why it closed; set exactly when `state` is `CLOSED`.",
+            "enum": [
+              "FIXED",
+              "DUPLICATE",
+              "NOT_A_PROBLEM",
+              "IGNORED",
+              "OBSOLETE",
+              "EXPIRED"
+            ],
+            "type": "string"
+          },
+          "revisitAt": {
+            "description": "When someone should check back, or null. Then a Monitoring issue\u0027s watcher is started on it, or, with no watcher, it goes back to `READY`.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "description": "Where the issue is in its lifecycle.",
+            "enum": [
+              "TRIAGE",
+              "READY",
+              "IN_PROGRESS",
+              "WAITING",
+              "MONITORING",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "stateChangedAt": {
+            "description": "When the state last changed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "teamIds": {
+            "description": "The teams that may see the issue, sorted.",
+            "items": {
+              "description": "The teams that may see the issue, sorted.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": {
+            "description": "One line naming the problem.",
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "description": "Bumped by every change to a field, the state, an assignment, a lock or the teams.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "watchedBy": {
+            "description": "The agent watching it in `MONITORING`: the one that moved it there, started on it again when a sighting comes in or its revisit time passes. Null outside Monitoring.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueAccessScopes": {
+        "description": "The issues the caller may view and edit. A client shows write controls from `edit`; the server still decides every request. An issue is in a scope when the scope is organization-wide, or when the issue names one of the scope\u0027s teams. An issue with no teams is only in organization-wide scopes. A person may give an issue the teams of their edit scope, or any team when it is organization-wide.",
+        "properties": {
+          "edit": {
+            "$ref": "#/components/schemas/IssueScopeView"
+          },
+          "view": {
+            "$ref": "#/components/schemas/IssueScopeView"
+          }
+        },
+        "type": "object"
+      },
+      "IssueActor": {
+        "description": "Who made a change to an issue. An agent is named by its own id and the investigation it acted in, never by the service account it authenticated as, since several agents may share one.",
+        "properties": {
+          "agentId": {
+            "description": "The agent, for an agent actor; null otherwise.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The person\u0027s user id, the agent\u0027s execution principal (its service account\u0027s token subject), or `system` for the server.",
+            "type": "string"
+          },
+          "investigationId": {
+            "description": "The investigation the agent acted in, for an agent actor; null otherwise.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "A person, an agent, or the server.",
+            "enum": [
+              "PERSON",
+              "AGENT",
+              "SYSTEM"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueAssigneeFilter": {
+        "description": "Whose active assignments a search matches. A deleted agent\u0027s assignment never counts, as it does not block a close.",
+        "properties": {
+          "id": {
+            "description": "The agent\u0027s or person\u0027s id, for `AGENT` and `PERSON` only.",
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "kind": {
+            "description": "`ME` for the caller, `UNASSIGNED` for issues nobody is working on, or `AGENT`/`PERSON` for one assignee.",
+            "enum": [
+              "ME",
+              "UNASSIGNED",
+              "AGENT",
+              "PERSON"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      },
+      "IssueAssigneeRef": {
+        "description": "Someone working on an issue, as a search result names them.",
+        "properties": {
+          "id": {
+            "description": "The person\u0027s id, or the agent\u0027s.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "A person or an agent.",
+            "enum": [
+              "PERSON",
+              "AGENT"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueAssignees": {
+        "description": "An issue after a change to its assignees, with all of them.",
+        "properties": {
+          "assignments": {
+            "description": "Its assignees, oldest first.",
+            "items": {
+              "$ref": "#/components/schemas/IssueAssignment"
+            },
+            "type": "array"
+          },
+          "issue": {
+            "$ref": "#/components/schemas/Issue"
+          }
+        },
+        "type": "object"
+      },
+      "IssueAssignment": {
+        "description": "One assignee of an issue.",
+        "properties": {
+          "assignedBy": {
+            "$ref": "#/components/schemas/IssueActor"
+          },
+          "assigneeDeleted": {
+            "description": "Whether the assignee is an agent that has since been deleted; its assignment no longer keeps the issue out of Monitoring or Closed.",
+            "type": "boolean"
+          },
+          "assigneeId": {
+            "description": "The person\u0027s user id or the agent\u0027s id.",
+            "type": "string"
+          },
+          "assigneeKind": {
+            "description": "A person or an agent.",
+            "enum": [
+              "PERSON",
+              "AGENT"
+            ],
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "When it was made.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "investigationId": {
+            "description": "For an agent\u0027s assignment, the run that made it active, which it ends with; null for a person\u0027s.",
+            "type": "string"
+          },
+          "note": {
+            "description": "A short note on its part, or null.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Whether the assignee is still working on its part.",
+            "enum": [
+              "ACTIVE",
+              "DONE"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueChannel": {
+        "description": "How a change reached the server.",
+        "enum": [
+          "REST",
+          "MCP",
+          "SYSTEM"
+        ],
+        "type": "string"
+      },
+      "IssueComment": {
+        "description": "A comment on an issue. A guidance comment, which only people write, is advice every later investigation on the issue\u0027s entities weighs; any other comment is a plain note.",
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/IssueActor"
+          },
+          "body": {
+            "description": "The markdown body.",
+            "type": "string"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/IssueChannel"
+          },
+          "createdAt": {
+            "description": "When it was written.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "editedAt": {
+            "description": "When its author last changed the body, or null.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "guidance": {
+            "description": "Whether it is guidance, which agents weigh as advice.",
+            "type": "boolean"
+          },
+          "guidanceSetAt": {
+            "description": "When it was marked guidance, or null.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "guidanceSetBy": {
+            "description": "The user id of the person who marked it guidance, or null.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The comment id.",
+            "type": "string"
+          },
+          "issueId": {
+            "description": "The issue it is on.",
+            "type": "string"
+          },
+          "lockedFieldProposal": {
+            "description": "The locked field the comment proposes changing, as named in a `FIELD_LOCKED` error (`priority`, `label:cost`), or null.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueCommentsPage": {
+        "description": "A page of an issue\u0027s comments, newest first.",
+        "properties": {
+          "items": {
+            "description": "The comments on this page.",
+            "items": {
+              "$ref": "#/components/schemas/IssueComment"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "Pass back as `cursor` for the next, older page; null on the last page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueDetail": {
+        "description": "An issue with what a person or agent needs to act on it.",
+        "properties": {
+          "assignments": {
+            "description": "Its assignees.",
+            "items": {
+              "$ref": "#/components/schemas/IssueAssignment"
+            },
+            "type": "array"
+          },
+          "guidance": {
+            "description": "Its newest guidance comments, oldest first: at most 20, and 32768 bytes of their bodies, though the newest is always there.",
+            "items": {
+              "$ref": "#/components/schemas/IssueComment"
+            },
+            "type": "array"
+          },
+          "guidanceOmitted": {
+            "description": "How many older guidance comments that bound left out; `GET /v1/issues/{id}/comments` pages every comment.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "guidanceReads": {
+            "description": "For each current guidance comment that agents were given, the investigations it was delivered to; a comment no longer guidance is not listed.",
+            "items": {
+              "$ref": "#/components/schemas/IssueGuidanceReads"
+            },
+            "type": "array"
+          },
+          "issue": {
+            "$ref": "#/components/schemas/Issue"
+          },
+          "recentComments": {
+            "description": "Its latest comments, newest first, at most 20.",
+            "items": {
+              "$ref": "#/components/schemas/IssueComment"
+            },
+            "type": "array"
+          },
+          "recentEvents": {
+            "description": "Its latest history entries, newest first, at most 20; `GET /v1/issues/{id}/events` pages older ones.",
+            "items": {
+              "$ref": "#/components/schemas/IssueEvent"
+            },
+            "type": "array"
+          },
+          "runs": {
+            "description": "Its runs that haven\u0027t ended, oldest first: queued or working on it, handed, picked up or watching.",
+            "items": {
+              "$ref": "#/components/schemas/IssueRun"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "IssueErrorResponse": {
+        "description": "The body of an issue API error. `code` is the HTTP status, as in every Grepr error body; `error` says why, so a client or agent can react without parsing the message.",
+        "properties": {
+          "code": {
+            "description": "The HTTP status.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "current": {
+            "$ref": "#/components/schemas/Issue"
+          },
+          "error": {
+            "description": "The machine-readable reason, such as VERSION_CONFLICT.",
+            "type": "string"
+          },
+          "fields": {
+            "description": "The locked fields, or the teams the caller cannot see or grant, when the error is about them.",
+            "items": {
+              "description": "The locked fields, or the teams the caller cannot see or grant, when the error is about them.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "message": {
+            "description": "What went wrong, for a person.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueEvent": {
+        "description": "One entry in an issue\u0027s history. Every change to an issue writes exactly one, in the same transaction, so the history cannot disagree with the issue.",
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/IssueActor"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/IssueChannel"
+          },
+          "createdAt": {
+            "description": "When it happened.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "diff": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/IssueFieldChange"
+            },
+            "description": "Each changed field\u0027s value before and after, keyed by field name. The description carries only its new text; its previous text is the `to` of the issue\u0027s previous entry that changed it. A `COMMENTED` entry carries the comment\u0027s id as `comment.to`. A `CREATED` entry by an agent carries, as `entitiesFilled.to`, the entities the server filled from the agent\u0027s investigation, beside the complete `entities`; it is absent when nothing was filled.",
+            "type": "object"
+          },
+          "id": {
+            "description": "The event id.",
+            "type": "string"
+          },
+          "issueId": {
+            "description": "The issue that changed.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "What kind of change it was.",
+            "enum": [
+              "CREATED",
+              "UPDATED",
+              "TRANSITIONED",
+              "LOCKS_CHANGED",
+              "COMMENTED",
+              "GUIDANCE_CHANGED",
+              "COMMENT_EDITED",
+              "COMMENT_DELETED",
+              "ASSIGNMENT_CHANGED",
+              "OCCURRED",
+              "HANDED_OFF",
+              "RUN_NOT_STARTED"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueEventsPage": {
+        "description": "A page of an issue\u0027s history, newest first.",
+        "properties": {
+          "items": {
+            "description": "The entries on this page.",
+            "items": {
+              "$ref": "#/components/schemas/IssueEvent"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "Pass back as `cursor` for the next, older page; null on the last page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueEvidence": {
+        "description": "Something a person can open to check an issue\u0027s claim.",
+        "properties": {
+          "from": {
+            "description": "Start of a log query\u0027s time range, or null.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "kind": {
+            "description": "What the evidence points at.",
+            "enum": [
+              "LOG_QUERY",
+              "EVENT",
+              "URL"
+            ],
+            "type": "string"
+          },
+          "label": {
+            "description": "A short description of what it shows, or null.",
+            "maxLength": 200,
+            "minLength": 0,
+            "type": "string"
+          },
+          "target": {
+            "description": "The Grepr log query for LOG_QUERY, the event id for EVENT, or an http(s) URL for URL.",
+            "maxLength": 4096,
+            "minLength": 0,
+            "type": "string"
+          },
+          "to": {
+            "description": "End of a log query\u0027s time range, or null.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "target"
+        ],
+        "type": "object"
+      },
+      "IssueFieldChange": {
+        "description": "One field\u0027s value before and after a change, as JSON.",
+        "properties": {
+          "from": {
+            "$ref": "#/components/schemas/JsonNode"
+          },
+          "to": {
+            "$ref": "#/components/schemas/JsonNode"
+          }
+        },
+        "type": "object"
+      },
+      "IssueFieldLock": {
+        "description": "Who locked a field and when, so the UI can say \"set by Jad on Oct 3; agents can\u0027t change this\".",
+        "properties": {
+          "setAt": {
+            "description": "When it was locked.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "setBy": {
+            "description": "The user id of the person whose write locked it.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueGuidanceRead": {
+        "description": "One investigation whose agent was given a guidance comment in its known-issues context.",
+        "properties": {
+          "agentId": {
+            "description": "The investigation\u0027s agent, or null when the investigation no longer exists.",
+            "type": "string"
+          },
+          "investigationId": {
+            "description": "The investigation.",
+            "type": "string"
+          },
+          "readAt": {
+            "description": "When the guidance was delivered.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueGuidanceReads": {
+        "description": "The investigations a guidance comment was delivered to.",
+        "properties": {
+          "commentId": {
+            "description": "The guidance comment.",
+            "type": "string"
+          },
+          "latest": {
+            "description": "The latest deliveries, newest first, at most 3.",
+            "items": {
+              "$ref": "#/components/schemas/IssueGuidanceRead"
+            },
+            "type": "array"
+          },
+          "readCount": {
+            "description": "How many investigations it was delivered to.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "IssueLabelLock": {
+        "description": "A person\u0027s lock on one label: agents may not remove a label a person added, or add back one a person removed.",
+        "properties": {
+          "setAt": {
+            "description": "When it was locked.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "setBy": {
+            "description": "The user id of the person whose write locked it.",
+            "type": "string"
+          },
+          "state": {
+            "description": "Whether the person added or removed the label.",
+            "enum": [
+              "PRESENT",
+              "ABSENT"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueLink": {
+        "description": "A typed reference from an issue to something related. A link grants nothing: the linked page applies its own access checks. A link to an issue the reader can\u0027t see comes back with only its kind and `hidden`, so an issue reveals nothing about another team\u0027s.",
+        "properties": {
+          "hidden": {
+            "description": "True for a link to an issue the reader can\u0027t see. Set only in responses.",
+            "nullable": true,
+            "type": "boolean"
+          },
+          "kind": {
+            "description": "What the link points at.",
+            "enum": [
+              "PIPELINE",
+              "INVESTIGATION",
+              "MEMORY",
+              "AGENT_SUGGESTION",
+              "EXTERNAL",
+              "ISSUE"
+            ],
+            "type": "string"
+          },
+          "label": {
+            "description": "A short description, or null.",
+            "maxLength": 200,
+            "minLength": 0,
+            "type": "string"
+          },
+          "target": {
+            "description": "Null only for a hidden issue link in a response.",
+            "maxLength": 4096,
+            "minLength": 0,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      },
+      "IssueLinkRef": {
+        "description": "A linked object to find issues by, such as a pipeline or an investigation.",
+        "properties": {
+          "kind": {
+            "description": "What the object is.",
+            "enum": [
+              "PIPELINE",
+              "INVESTIGATION",
+              "MEMORY",
+              "AGENT_SUGGESTION",
+              "EXTERNAL",
+              "ISSUE"
+            ],
+            "type": "string"
+          },
+          "target": {
+            "description": "Its id, or the URL for an external link.",
+            "maxLength": 4096,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "target"
+        ],
+        "type": "object"
+      },
+      "IssueLocks": {
+        "description": "The fields and labels people have locked against agent changes. `state` never locks.",
+        "properties": {
+          "fields": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/IssueFieldLock"
+            },
+            "description": "The locked fields, each with who locked it and when.",
+            "type": "object"
+          },
+          "labels": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/IssueLabelLock"
+            },
+            "description": "The locked labels, keyed by label.",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "IssueRun": {
+        "description": "A run started on the issue that hasn\u0027t ended: handed to its agent by a person, or picked up from Ready. It holds the issue until it ends.",
+        "properties": {
+          "agentId": {
+            "description": "The run\u0027s agent.",
+            "type": "string"
+          },
+          "investigationId": {
+            "description": "The run\u0027s investigation id.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Where the run is: QUEUED, RUNNING, STOPPING, CANCELLING, or STOPPED and resumable.",
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "STOPPING",
+              "CANCELLING",
+              "STOPPED",
+              "COMPLETED",
+              "FAILED",
+              "CANCELLED",
+              "DISCARDED"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueScopeView": {
+        "description": "Which issues a principal may act on for one action: every issue in the organization, or those naming one of these teams.",
+        "properties": {
+          "orgWide": {
+            "description": "Whether the principal may act on every issue in the organization.",
+            "type": "boolean"
+          },
+          "teamIds": {
+            "description": "The teams whose issues the principal may act on, sorted; empty when `orgWide`.",
+            "items": {
+              "description": "The teams whose issues the principal may act on, sorted; empty when `orgWide`.",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "IssueSummary": {
+        "description": "A compact issue row for the board and search results: everything a card or a list shows, without the description, evidence, links and locks that `GET /v1/issues/{idOrNumber}` returns.",
+        "properties": {
+          "assignees": {
+            "description": "Who is working on it, oldest first: active assignments, without a deleted agent\u0027s.",
+            "items": {
+              "$ref": "#/components/schemas/IssueAssigneeRef"
+            },
+            "type": "array"
+          },
+          "commentCount": {
+            "description": "How many comments it has, guidance included.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "confidence": {
+            "description": "How sure the reporter is that the problem is real.",
+            "enum": [
+              "CONFIRMED",
+              "LIKELY",
+              "UNVERIFIED"
+            ],
+            "type": "string"
+          },
+          "duplicateOf": {
+            "description": "The surviving issue, for a duplicate; null when the reader can\u0027t see it.",
+            "type": "string"
+          },
+          "duplicateOfHidden": {
+            "description": "True when the reader can\u0027t see the surviving issue.",
+            "type": "boolean"
+          },
+          "entities": {
+            "additionalProperties": {
+              "description": "The `entity:*` tags it concerns.",
+              "type": "string"
+            },
+            "description": "The `entity:*` tags it concerns.",
+            "type": "object"
+          },
+          "expiresAt": {
+            "description": "When it stops applying and closes, or null.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "guidanceCount": {
+            "description": "How many of its comments are guidance from people.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "id": {
+            "description": "The issue id.",
+            "type": "string"
+          },
+          "labels": {
+            "description": "Its categories.",
+            "items": {
+              "description": "Its categories.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "lastSeenAt": {
+            "description": "The latest sighting, or when it was filed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "locked": {
+            "description": "Whether people have locked any field or label against agent changes.",
+            "type": "boolean"
+          },
+          "nextStep": {
+            "description": "The concrete next action, or null.",
+            "type": "string"
+          },
+          "number": {
+            "description": "The short per-organization handle.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "occurrenceCount": {
+            "description": "How many investigations sighted it.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "pipelineIds": {
+            "description": "The pipelines it concerns: its pipeline links\u0027 targets, then its `entity:pipeline`, without repeats.",
+            "items": {
+              "description": "The pipelines it concerns: its pipeline links\u0027 targets, then its `entity:pipeline`, without repeats.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "priority": {
+            "description": "How soon someone should act.",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3"
+            ],
+            "type": "string"
+          },
+          "regressed": {
+            "description": "Whether it reopened after being fixed.",
+            "type": "boolean"
+          },
+          "resolution": {
+            "description": "Why it closed, or null while open.",
+            "enum": [
+              "FIXED",
+              "DUPLICATE",
+              "NOT_A_PROBLEM",
+              "IGNORED",
+              "OBSOLETE",
+              "EXPIRED"
+            ],
+            "type": "string"
+          },
+          "revisitAt": {
+            "description": "When someone should check back, or null.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "runs": {
+            "description": "Its runs that haven\u0027t ended, oldest first: queued or working on it, handed, picked up or watching.",
+            "items": {
+              "$ref": "#/components/schemas/IssueRun"
+            },
+            "type": "array"
+          },
+          "state": {
+            "description": "Where the issue is in its lifecycle.",
+            "enum": [
+              "TRIAGE",
+              "READY",
+              "IN_PROGRESS",
+              "WAITING",
+              "MONITORING",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "teamIds": {
+            "description": "The teams that may see it.",
+            "items": {
+              "description": "The teams that may see it.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": {
+            "description": "One line naming the problem.",
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "When it last changed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "description": "Its current version, for a follow-up update.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "watchedBy": {
+            "description": "The agent watching it in Monitoring, or null.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueTitle": {
+        "description": "One issue\u0027s number and title, as a titles read answers each id it was sent. An issue the reader can\u0027t see, or one that doesn\u0027t exist, comes back as `{hidden: true}` alone, so the answer names nothing about it.",
+        "properties": {
+          "hidden": {
+            "description": "True when you can\u0027t see the issue, or it doesn\u0027t exist.",
+            "nullable": true,
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Null when hidden.",
+            "nullable": true,
+            "type": "string"
+          },
+          "number": {
+            "description": "Null when hidden.",
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "title": {
+            "description": "Null when hidden.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "IssueTitles": {
+        "description": "The answer to a titles read.",
+        "properties": {
+          "issues": {
+            "description": "One entry per id sent, in the order sent.",
+            "items": {
+              "$ref": "#/components/schemas/IssueTitle"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "ItemsCollectionAgentSuggestion": {
         "properties": {
           "items": {
@@ -7801,6 +9140,23 @@
           "ruleEngineName",
           "triggerId"
         ],
+        "type": "object"
+      },
+      "JoinIssueRequest": {
+        "description": "Joins an issue as an active assignee: an agent as itself, a person as themselves. Joining a Ready issue moves it to In progress; joining again after finishing makes the assignment active again.",
+        "properties": {
+          "note": {
+            "description": "What the caller will do, or null.",
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "version": {
+            "description": "The version the join was decided against, or null for whatever is current.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
         "type": "object"
       },
       "JsonFileFormat": {
@@ -10056,7 +11412,7 @@
             "type": "integer"
           },
           "mode": {
-            "default": "SEMANTIC",
+            "description": "The retrieval strategy. Leave it out for the server to pick: SEMANTIC when the agent searched has a semantic-search store and TEXT when it has none.",
             "enum": [
               "SEMANTIC",
               "TEXT",
@@ -10094,7 +11450,6 @@
           }
         },
         "required": [
-          "mode",
           "significances"
         ],
         "type": "object"
@@ -12727,6 +14082,44 @@
         ],
         "type": "object"
       },
+      "PickupFilters": {
+        "description": "The filters an agent picks up Ready issues by; null means any.",
+        "properties": {
+          "entities": {
+            "additionalProperties": {
+              "description": "Any of these values for each entity key.",
+              "items": {
+                "description": "Any of these values for each entity key.",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Any of these values for each entity key.",
+            "type": "object"
+          },
+          "labels": {
+            "description": "Every one of these labels.",
+            "items": {
+              "description": "Every one of these labels.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "priority": {
+            "description": "This priority or more urgent.",
+            "type": "string"
+          },
+          "teamIds": {
+            "description": "Any of these teams.",
+            "items": {
+              "description": "Any of these teams.",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "PipelineChangeRequest": {
         "properties": {
           "autoApply": {
@@ -12875,6 +14268,36 @@
         "required": [
           "date",
           "type"
+        ],
+        "type": "object"
+      },
+      "PostIssueCommentRequest": {
+        "description": "Posts a comment on an issue. Comments are allowed on closed issues too, so a person can leave guidance on an issue they closed as `IGNORED`.",
+        "properties": {
+          "body": {
+            "description": "The markdown body.",
+            "maxLength": 16384,
+            "minLength": 0,
+            "type": "string"
+          },
+          "guidance": {
+            "description": "Makes it guidance, advice every later investigation on the issue\u0027s entities weighs; people only.",
+            "type": "boolean"
+          },
+          "lockedFieldProposal": {
+            "description": "The locked field the comment proposes changing, named as in a `FIELD_LOCKED` error: a field such as `priority`, or `label:\u003clabel\u003e`.",
+            "maxLength": 80,
+            "minLength": 0,
+            "type": "string"
+          },
+          "version": {
+            "description": "The version the comment was written against; a stale one is rejected with 409 and the current issue. Null posts against whatever is current.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "body"
         ],
         "type": "object"
       },
@@ -15464,7 +16887,8 @@
               "ORGANIZATION_SETTINGS",
               "SERVICE_ACCOUNT",
               "ORGANIZATION",
-              "BILLING"
+              "BILLING",
+              "ISSUE"
             ],
             "example": "INTEGRATION",
             "type": "string"
@@ -15743,6 +17167,142 @@
         ],
         "type": "object"
       },
+      "SearchIssuesRequest": {
+        "description": "Filters for searching the issues the caller can see. Every filter is optional; all given filters must match. Results are ordered by full-text rank when `query` is given, else by latest sighting.",
+        "properties": {
+          "assignee": {
+            "$ref": "#/components/schemas/IssueAssigneeFilter"
+          },
+          "closedWithinDays": {
+            "description": "Include closed issues closed within this many days. Absent: 30 when `states` is absent, and no window when it is given.",
+            "format": "int32",
+            "maximum": 3650,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "cursor": {
+            "description": "The `nextCursor` of the previous page, sent with the same filters.",
+            "maxLength": 1024,
+            "minLength": 0,
+            "type": "string"
+          },
+          "entities": {
+            "additionalProperties": {
+              "description": "Entity tags to match: every key must match, and any of a key\u0027s values matches it. An unprefixed key is put in the `entity:` namespace.",
+              "items": {
+                "description": "Entity tags to match: every key must match, and any of a key\u0027s values matches it. An unprefixed key is put in the `entity:` namespace.",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Entity tags to match: every key must match, and any of a key\u0027s values matches it. An unprefixed key is put in the `entity:` namespace.",
+            "type": "object"
+          },
+          "fingerprint": {
+            "description": "Only issues with exactly this fingerprint.",
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string"
+          },
+          "labels": {
+            "description": "Only issues carrying every one of these labels.",
+            "items": {
+              "description": "Only issues carrying every one of these labels.",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 0,
+            "type": "array"
+          },
+          "limit": {
+            "description": "The page size, at most 100; absent: 25.",
+            "format": "int32",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "linkedTo": {
+            "$ref": "#/components/schemas/IssueLinkRef"
+          },
+          "priority": {
+            "description": "Only issues at this priority or more urgent.",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "description": "Full-text search over titles, descriptions and comments.",
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string"
+          },
+          "states": {
+            "description": "Only issues in these states. Absent: open issues plus those closed within `closedWithinDays`.",
+            "items": {
+              "description": "Only issues in these states. Absent: open issues plus those closed within `closedWithinDays`.",
+              "enum": [
+                "TRIAGE",
+                "READY",
+                "IN_PROGRESS",
+                "WAITING",
+                "MONITORING",
+                "CLOSED"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "teamIds": {
+            "description": "Only issues one of these teams can see: linked to one of them, or shared with all teams.",
+            "items": {
+              "description": "Only issues one of these teams can see: linked to one of them, or shared with all teams.",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 0,
+            "type": "array"
+          },
+          "updatedSince": {
+            "description": "Only issues changed at or after this time.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SearchIssuesResponse": {
+        "description": "A page of search results. Paging is best effort on a live board: an issue that changes between pages can move.",
+        "properties": {
+          "items": {
+            "description": "The matching issues on this page.",
+            "items": {
+              "$ref": "#/components/schemas/IssueSummary"
+            },
+            "type": "array"
+          },
+          "labelsInUse": {
+            "description": "The labels most used on recent issues the caller can see, so a new issue reuses them; on the first page only, null after.",
+            "items": {
+              "description": "The labels most used on recent issues the caller can see, so a new issue reuses them; on the first page only, null after.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "Pass back as `cursor`, with the same filters, for the next page; null on the last page.",
+            "type": "string"
+          },
+          "truncated": {
+            "description": "Whether the search stopped after 500 rows; refine the filters to see the rest.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "SecretApi": {
         "description": "Secret wrapper for API responses",
         "properties": {
@@ -15859,6 +17419,62 @@
         },
         "required": [
           "keys"
+        ],
+        "type": "object"
+      },
+      "SetCommentGuidanceRequest": {
+        "description": "Makes a person\u0027s comment guidance, or stops it being guidance; people only.",
+        "properties": {
+          "guidance": {
+            "description": "Whether the comment is guidance, which agents weigh as advice.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "guidance"
+        ],
+        "type": "object"
+      },
+      "SetIssueLocksRequest": {
+        "description": "Replaces an issue\u0027s locks; people only. A lock kept from before keeps who set it and when; a new one records the caller. Leaving a lock out unlocks it.",
+        "properties": {
+          "fields": {
+            "description": "The fields to keep locked.",
+            "items": {
+              "description": "The fields to keep locked.",
+              "enum": [
+                "PRIORITY",
+                "ENTITIES",
+                "EXPIRES_AT",
+                "ASSIGNEES"
+              ],
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "labels": {
+            "additionalProperties": {
+              "description": "The label locks to keep, keyed by label: `PRESENT` only for a label the issue has, `ABSENT` only for one it does not.",
+              "enum": [
+                "PRESENT",
+                "ABSENT"
+              ],
+              "type": "string"
+            },
+            "description": "The label locks to keep, keyed by label: `PRESENT` only for a label the issue has, `ABSENT` only for one it does not.",
+            "type": "object"
+          },
+          "version": {
+            "description": "The version the lock set was read at; a stale one is rejected with 409.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "fields",
+          "labels",
+          "version"
         ],
         "type": "object"
       },
@@ -17108,14 +18724,26 @@
         "type": "object"
       },
       "StartInvestigationRequest": {
+        "description": "Request body for the manual-trigger endpoint. The engineer\u0027s user identity is taken from the request\u0027s auth context, not the body.",
         "properties": {
           "agentId": {
+            "description": "TSID of the agent to investigate.",
             "type": "string"
           },
+          "issueId": {
+            "description": "When set, hands the agent this issue (its TSID): the run\u0027s subject, which its known issues hold alone and whose history records the handoff. Only a person may hand off an issue, and a handoff can\u0027t be a continuation. `null` for a plain run.",
+            "type": "string"
+          },
+          "next": {
+            "description": "With `issueId`, true to have the agent work on the issue next: the run starts ahead of the agent\u0027s other queued runs, without stopping a running one. Allowed only with `issueId`; `null` or false for the usual place in the queue.",
+            "type": "boolean"
+          },
           "parentInvestigationId": {
+            "description": "When set, seeds the new investigation from this parent\u0027s journalled transcript — a continuation; the parent must belong to `agentId`. `null` for a fresh investigation.",
             "type": "string"
           },
           "userProvidedContext": {
+            "description": "Free-form context for the agent\u0027s first turn, or `null`.",
             "type": "string"
           }
         },
@@ -18805,11 +20433,18 @@
         "type": "object"
       },
       "ToolDescriptor": {
+        "description": "A user-selectable agent tool, surfaced so a UI can offer the set of tools an agent may enable.",
         "properties": {
           "description": {
+            "description": "A short, human-readable summary of what the tool does.",
+            "type": "string"
+          },
+          "label": {
+            "description": "The tool\u0027s name as people read it, such as \"Query logs\", or null where a catalog has none; left out of the JSON when null.",
             "type": "string"
           },
           "name": {
+            "description": "The tool name, matching what the worker registers and validates against an agent\u0027s `enabledTools`.",
             "type": "string"
           }
         },
@@ -19452,7 +21087,8 @@
               "TRIGGER_SIGNAL",
               "USER",
               "ASSISTANT",
-              "TOOL_RESULT"
+              "TOOL_RESULT",
+              "KNOWN_ISSUES"
             ],
             "type": "string"
           },
@@ -19538,6 +21174,71 @@
             "$ref": "#/components/schemas/ChainNode"
           }
         },
+        "type": "object"
+      },
+      "TransitionIssueRequest": {
+        "description": "Moves an issue to another state, checked against the state machine.",
+        "properties": {
+          "comment": {
+            "description": "A comment posted with the transition, in the same transaction; required, with new evidence, when an agent reopens a `NOT_A_PROBLEM` issue.",
+            "maxLength": 16384,
+            "minLength": 0,
+            "type": "string"
+          },
+          "duplicateOf": {
+            "description": "The surviving issue\u0027s id or number; required exactly when `resolution` is `DUPLICATE`.",
+            "type": "string"
+          },
+          "evidence": {
+            "description": "Evidence added to the issue with the transition.",
+            "items": {
+              "$ref": "#/components/schemas/IssueEvidence"
+            },
+            "maxItems": 50,
+            "minItems": 0,
+            "type": "array"
+          },
+          "force": {
+            "description": "Lets a person move to Monitoring or Closed while assignees are still active; people only.",
+            "type": "boolean"
+          },
+          "guidance": {
+            "description": "Makes `comment` a guidance comment, which agents weigh; people only, so closing as `IGNORED` with guidance is one call.",
+            "type": "boolean"
+          },
+          "resolution": {
+            "description": "Why it closes; required when `to` is `CLOSED`, absent otherwise.",
+            "enum": [
+              "FIXED",
+              "DUPLICATE",
+              "NOT_A_PROBLEM",
+              "IGNORED",
+              "OBSOLETE",
+              "EXPIRED"
+            ],
+            "type": "string"
+          },
+          "to": {
+            "description": "The target state. Moving an open issue to the state it is already in changes no state but still applies `comment` and `evidence`; it rejects `resolution`, `duplicateOf` and `force`, which need a state change.",
+            "enum": [
+              "TRIAGE",
+              "READY",
+              "IN_PROGRESS",
+              "WAITING",
+              "MONITORING",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "description": "The version the transition was decided against, or null to apply it to whatever is current.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "to"
+        ],
         "type": "object"
       },
       "Trigger": {
@@ -20022,6 +21723,137 @@
         },
         "required": [
           "name"
+        ],
+        "type": "object"
+      },
+      "UpdateIssueRequest": {
+        "description": "A partial update. An absent field is left unchanged, a present one is set, and an optional field named in `clear` is emptied. State, resolution and `duplicateOf` change only through transitions.",
+        "properties": {
+          "clear": {
+            "description": "Optional fields to empty.",
+            "items": {
+              "description": "Optional fields to empty.",
+              "enum": [
+                "NEXT_STEP",
+                "REVISIT_AT",
+                "EXPIRES_AT",
+                "EVIDENCE",
+                "LINKS",
+                "LABELS",
+                "FINGERPRINT"
+              ],
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "confidence": {
+            "description": "A new confidence.",
+            "enum": [
+              "CONFIRMED",
+              "LIKELY",
+              "UNVERIFIED"
+            ],
+            "type": "string"
+          },
+          "description": {
+            "description": "A new description, replacing the old one.",
+            "maxLength": 32768,
+            "minLength": 0,
+            "type": "string"
+          },
+          "entities": {
+            "additionalProperties": {
+              "description": "New entity tags, replacing the old ones; a person\u0027s change locks them.",
+              "type": "string"
+            },
+            "description": "New entity tags, replacing the old ones; a person\u0027s change locks them.",
+            "type": "object"
+          },
+          "evidence": {
+            "description": "New evidence, replacing the old list.",
+            "items": {
+              "$ref": "#/components/schemas/IssueEvidence"
+            },
+            "maxItems": 50,
+            "minItems": 0,
+            "type": "array"
+          },
+          "expiresAt": {
+            "description": "A new expiry.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "fingerprint": {
+            "description": "A new fingerprint.",
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string"
+          },
+          "labels": {
+            "description": "New labels, replacing the old list; a person\u0027s additions and removals lock those labels.",
+            "items": {
+              "description": "New labels, replacing the old list; a person\u0027s additions and removals lock those labels.",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 0,
+            "type": "array"
+          },
+          "links": {
+            "description": "New links, replacing the old list.",
+            "items": {
+              "$ref": "#/components/schemas/IssueLink"
+            },
+            "maxItems": 50,
+            "minItems": 0,
+            "type": "array"
+          },
+          "nextStep": {
+            "description": "A new next step.",
+            "maxLength": 4096,
+            "minLength": 0,
+            "type": "string"
+          },
+          "priority": {
+            "description": "A new priority; a person\u0027s change locks it against agents.",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3"
+            ],
+            "type": "string"
+          },
+          "revisitAt": {
+            "description": "A new revisit time.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "teamIds": {
+            "description": "New teams; people only, adding or removing only teams they can edit issues of.",
+            "items": {
+              "description": "New teams; people only, adding or removing only teams they can edit issues of.",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 0,
+            "type": "array"
+          },
+          "title": {
+            "description": "A new title.",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "version": {
+            "description": "The version the change was made against; a stale one is rejected with 409 and the current issue.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
         ],
         "type": "object"
       },
@@ -22822,7 +24654,7 @@
     },
     "/v1/agents/roster": {
       "get": {
-        "description": "Returns every agent configured for your organization, projected to just id and name — enough to decide whose recorded memory is worth searching.",
+        "description": "Returns every agent configured for your organization, projected to its id, name, description and pickup filters: enough to decide whose recorded memory is worth searching, or how to put an issue in Ready so an agent picks it up.",
         "operationId": "roster",
         "responses": {
           "200": {
@@ -23089,15 +24921,17 @@
             }
           },
           {
-            "description": "Signal types to include; repeat for multiple. Absent for all.",
+            "description": "Triggers to include; repeat for multiple. Absent for all. ISSUE is a run started on an issue, handed by a person or picked up from the board; MANUAL is then a Run now only.",
             "in": "query",
             "name": "triggers",
             "schema": {
               "items": {
                 "enum": [
                   "MANUAL",
+                  "ISSUE",
                   "WEBHOOK_SIGNAL",
-                  "LOG_PATTERN_SIGNAL"
+                  "LOG_PATTERN_SIGNAL",
+                  "PIPELINE_SIGNAL"
                 ],
                 "type": "string"
               },
@@ -23129,6 +24963,52 @@
           }
         ],
         "summary": "List an agent\u0027s investigations",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/v1/agents/{id}/issue-reach": {
+      "get": {
+        "description": "Returns whose issues the agent reads, and whose it can be handed, pick up and change: every issue in your organization or those of some teams, from its service account\u0027s issue scopes.",
+        "operationId": "issueReach",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentIssueScopes"
+                }
+              }
+            },
+            "description": "Issue reach retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Agent not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get the issues an agent reads and works on",
         "tags": [
           "Agents"
         ]
@@ -23340,7 +25220,7 @@
     },
     "/v1/agents/{id}/state": {
       "put": {
-        "description": "Sets the agent to PAUSED or ACTIVE. A paused agent runs no investigations: signals from every source are dropped, manual starts and resumes are refused, and queued investigations wait until the agent is resumed. Pipelines keep marking new patterns as sent, so after resuming, the agent usually reacts only to patterns that are new since then.",
+        "description": "Sets the agent to PAUSED or ACTIVE. A paused agent runs no investigations: signals from every source are dropped, manual starts and resumes are refused, and queued investigations wait until the agent is resumed, except those on an issue, which are discarded so other agents can take the issue. Pipelines keep marking new patterns as sent, so after resuming, the agent usually reacts only to patterns that are new since then.",
         "operationId": "setState",
         "parameters": [
           {
@@ -31527,7 +33407,7 @@
     },
     "/v1/investigations": {
       "post": {
-        "description": "Triggers an agent investigation with optional free-form context and returns the new investigation id. The investigation is queued and runs asynchronously once the agent has a free concurrency slot.",
+        "description": "Triggers an agent investigation with optional free-form context and returns the new investigation id. The investigation is queued and runs asynchronously once the agent has a free concurrency slot. With issueId, a person hands the agent that issue, which becomes the investigation\u0027s subject and records the handoff in its history.",
         "operationId": "start",
         "requestBody": {
           "content": {
@@ -31549,11 +33429,20 @@
             },
             "description": "Investigation queued"
           },
+          "400": {
+            "description": "An invalid continuation, or a handoff that is also a continuation or to an agent with no issue tools (a handoff\u0027s refusals carry an issue error body)"
+          },
           "401": {
             "description": "Unauthorized"
           },
+          "403": {
+            "description": "No permission to run investigations, or a handoff by anyone but a person, by a person who may not edit the issue, or to an agent that may not view and edit it"
+          },
           "404": {
-            "description": "Agent not found"
+            "description": "Agent not found, or the handed issue doesn\u0027t exist or the caller can\u0027t see it"
+          },
+          "409": {
+            "description": "The agent is paused or the continued investigation is still active, or a handoff of a closed issue or to an agent a person removed from it"
           },
           "429": {
             "content": {
@@ -32065,6 +33954,1301 @@
         "summary": "Get an invitation by id",
         "tags": [
           "Invitations"
+        ]
+      }
+    },
+    "/v1/issues": {
+      "post": {
+        "description": "Files a new issue on the organization\u0027s board. Search first and update an existing issue instead of filing a duplicate; this call never matches existing issues.",
+        "operationId": "create_14",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description": "Issue filed"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid issue, or a field only people may set"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "No permission to file issues, or to share them with the given teams"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "File an issue",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/access": {
+      "get": {
+        "description": "Returns which issues you may view and which you may edit: every issue in the organization, or those of some teams. Clients use it to show write controls; every request is still authorized on its own.",
+        "operationId": "access",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueAccessScopes"
+                }
+              }
+            },
+            "description": "Access retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get your issue access",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/search": {
+      "post": {
+        "description": "Returns the issues matching every given filter, ranked by full-text relevance when a query is given and by latest sighting otherwise. By default, open issues plus those closed in the last 30 days.",
+        "operationId": "search_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchIssuesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchIssuesResponse"
+                }
+              }
+            },
+            "description": "Search results"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid filters, or a cursor from another search"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "No permission to view issues"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Search issues",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/titles": {
+      "get": {
+        "description": "Returns the number and title of each issue named, one entry per id in the order sent. Repeat id, up to 100 times. An issue you can\u0027t see, or one that doesn\u0027t exist, comes back as hidden with nothing else.",
+        "operationId": "titles",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 0,
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueTitles"
+                }
+              }
+            },
+            "description": "Titles retrieved"
+          },
+          "400": {
+            "description": "More than 100 ids"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get issue titles",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/{idOrNumber}": {
+      "get": {
+        "description": "Returns an issue with its assignees, its newest guidance comments, and its latest comments and history entries; the comments route pages every comment. Plain sightings are left out of that history; the issue\u0027s occurrence counts summarize them, and the history route pages them.",
+        "operationId": "get_16",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueDetail"
+                }
+              }
+            },
+            "description": "Issue retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Issue not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get an issue",
+        "tags": [
+          "Issues"
+        ]
+      },
+      "patch": {
+        "description": "Changes the given fields and leaves the rest. A person\u0027s change to priority, entities or teams locks that field against agents. A stale version is rejected with the current issue, so the caller can reapply its change.",
+        "operationId": "update_12",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description": "Issue updated"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid update, or a field only people may set"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "No permission to edit the issue"
+          },
+          "404": {
+            "description": "Issue not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Stale version, or a field a person locked"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Update an issue",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/{idOrNumber}/assignees": {
+      "post": {
+        "description": "Adds the caller as an active assignee. Joining a Ready issue moves it to In progress; joining again changes nothing, or reactivates a finished assignment.",
+        "operationId": "join",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueAssignees"
+                }
+              }
+            },
+            "description": "Joined"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "The issue is closed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "No permission to edit the issue"
+          },
+          "404": {
+            "description": "Issue not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Stale version; the body carries the current issue"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Join an issue",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/{idOrNumber}/assignees/me": {
+      "patch": {
+        "description": "Marks the caller\u0027s own assignment done. Join again to pick the work back up.",
+        "operationId": "finishAssignment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinishAssignmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueAssignees"
+                }
+              }
+            },
+            "description": "Finished"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "The caller is not assigned"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "No permission to edit the issue"
+          },
+          "404": {
+            "description": "Issue not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Stale version; the body carries the current issue"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Finish your assignment",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/{idOrNumber}/assignees/{assigneeKind}/{assigneeId}": {
+      "delete": {
+        "description": "Removes an assignee. People only; the removal stops agents from changing who is assigned.",
+        "operationId": "removeAssignee",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "assigneeKind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "PERSON",
+                "AGENT"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "assigneeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueAssignees"
+                }
+              }
+            },
+            "description": "Removed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Not a person, or no permission to edit the issue"
+          },
+          "404": {
+            "description": "Issue not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Remove an assignee",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/{idOrNumber}/comments": {
+      "get": {
+        "description": "Returns an issue\u0027s comments, newest first.",
+        "operationId": "comments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "format": "int32",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueCommentsPage"
+                }
+              }
+            },
+            "description": "Comments retrieved"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Malformed cursor"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Issue not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "List an issue\u0027s comments",
+        "tags": [
+          "Issues"
+        ]
+      },
+      "post": {
+        "description": "Posts a comment, on an open or closed issue. A person may make it guidance, advice every later investigation on the issue\u0027s entities weighs.",
+        "operationId": "comment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostIssueCommentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueComment"
+                }
+              }
+            },
+            "description": "Comment posted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Guidance from an agent, or a bad proposal"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "No permission to edit the issue"
+          },
+          "404": {
+            "description": "Issue not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Stale version; the body carries the current issue"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Comment on an issue",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/{idOrNumber}/comments/{commentId}": {
+      "delete": {
+        "description": "Deletes a comment the caller wrote: it leaves the issue\u0027s comments, guidance and search. People only. The history keeps its text; deleting a guidance comment changes the issue\u0027s version.",
+        "operationId": "deleteComment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Comment deleted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Not a person, not the comment\u0027s author, or no permission to edit"
+          },
+          "404": {
+            "description": "Issue or comment not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Delete a comment",
+        "tags": [
+          "Issues"
+        ]
+      },
+      "patch": {
+        "description": "Makes a person\u0027s comment guidance, advice agents weigh, or stops it being guidance. People only; an agent\u0027s comment can never be guidance.",
+        "operationId": "setCommentGuidance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCommentGuidanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueComment"
+                }
+              }
+            },
+            "description": "Comment updated"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "The comment is an agent\u0027s"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Not a person, or no permission to edit the issue"
+          },
+          "404": {
+            "description": "Issue or comment not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Mark a comment as guidance",
+        "tags": [
+          "Issues"
+        ]
+      },
+      "put": {
+        "description": "Replaces the body of a comment the caller wrote. People only. The history keeps the old text; editing a guidance comment changes the issue\u0027s version.",
+        "operationId": "editComment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "commentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditIssueCommentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueComment"
+                }
+              }
+            },
+            "description": "Comment edited"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Not a person, not the comment\u0027s author, or no permission to edit"
+          },
+          "404": {
+            "description": "Issue or comment not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "The issue changed since the given version"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Edit a comment",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/{idOrNumber}/events": {
+      "get": {
+        "description": "Returns an issue\u0027s history entries, newest first. Repeat kind to return only those kinds, for example to leave out OCCURRED sightings.",
+        "operationId": "events",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "format": "int32",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "schema": {
+              "items": {
+                "enum": [
+                  "CREATED",
+                  "UPDATED",
+                  "TRANSITIONED",
+                  "LOCKS_CHANGED",
+                  "COMMENTED",
+                  "GUIDANCE_CHANGED",
+                  "COMMENT_EDITED",
+                  "COMMENT_DELETED",
+                  "ASSIGNMENT_CHANGED",
+                  "OCCURRED",
+                  "HANDED_OFF",
+                  "RUN_NOT_STARTED"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueEventsPage"
+                }
+              }
+            },
+            "description": "History retrieved"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Malformed cursor, or one issued for other kinds"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Issue not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "List an issue\u0027s history",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/{idOrNumber}/locks": {
+      "put": {
+        "description": "Replaces the fields and labels locked against agent changes. Leaving a lock out unlocks it. People only.",
+        "operationId": "setLocks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetIssueLocksRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description": "Locks set"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "A label lock contradicts the issue\u0027s labels"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "No permission, or not a person"
+          },
+          "404": {
+            "description": "Issue not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Stale version"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Set an issue\u0027s locks",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/{idOrNumber}/occurrences": {
+      "post": {
+        "description": "Links the calling investigation to the issue once and counts it. A sighting of a fixed or obsolete issue reopens it, and of a Monitoring issue moves it back to In progress, when the investigation started after the issue\u0027s last state change. A duplicate\u0027s sighting lands on its survivor. Only an agent\u0027s investigation can record one.",
+        "operationId": "recordOccurrence",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description": "Sighting recorded"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Not an agent\u0027s investigation, or no permission to edit the issue"
+          },
+          "404": {
+            "description": "Issue not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "ISSUE_EXPIRED: file a new issue. VERSION_CONFLICT: the issue kept changing; retry once. INVALID_DUPLICATE: the issue it duplicates no longer exists"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Record a sighting",
+        "tags": [
+          "Issues"
+        ]
+      }
+    },
+    "/v1/issues/{idOrNumber}/transitions": {
+      "post": {
+        "description": "Moves an issue through its lifecycle: Triage, Ready, In progress, Waiting, Monitoring, Closed. Closing needs a resolution; Monitoring needs a revisit time or expiry; both need every assignee done unless a person forces it.",
+        "operationId": "transition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description": "Issue transitioned"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "The state machine does not allow the transition"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "No permission, or a transition reserved for people"
+          },
+          "404": {
+            "description": "Issue not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Stale version, active assignees, or an expired issue"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Change an issue\u0027s state",
+        "tags": [
+          "Issues"
         ]
       }
     },
