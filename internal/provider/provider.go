@@ -171,6 +171,7 @@ func (p *GreprProvider) Resources(ctx context.Context) []func() resource.Resourc
 		integration.NewOTLPResource,
 		integration.NewDataWarehouseResource,
 		integration.NewS3DataWarehouseResource,
+		integration.NewPipeResource,
 		dataset.NewDatasetResource,
 	}
 }

@@ -38,6 +38,10 @@ output-options:
     - getS3DataWarehouseIntegration
     - updateS3DataWarehouseIntegration
     - deleteS3DataWarehouseIntegration
+    - createGreprPipeIntegration
+    - getGreprPipeIntegration
+    - updateGreprPipeIntegration
+    - deleteGreprPipeIntegration
     - upsertDatadogApiKey
     - setDatadogApiKeys
     - upsertDatadogAppKey

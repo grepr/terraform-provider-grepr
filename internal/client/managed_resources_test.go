@@ -11,7 +11,7 @@ import (
 )
 
 func TestIntegrationLifecycleRoutes(t *testing.T) {
-	for _, route := range []string{"datadog", "splunk", "newrelic", "sumo", "otlp", "data-warehouse", "s3-data-warehouse"} {
+	for _, route := range []string{"datadog", "splunk", "newrelic", "sumo", "otlp", "data-warehouse", "s3-data-warehouse", "grepr-pipe"} {
 		t.Run(route, func(t *testing.T) {
 			var methods []string
 			server, c := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {

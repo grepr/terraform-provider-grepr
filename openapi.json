@@ -6519,6 +6519,82 @@
           "Sources"
         ]
       },
+      "GreprPipe": {
+        "description": "The payload containing integration data.",
+        "type": "object",
+        "x-type": {
+          "type": "grepr-pipe"
+        }
+      },
+      "GreprPipeLogSink": {
+        "description": "Writes log events into a Grepr pipe integration.",
+        "properties": {
+          "integrationId": {
+            "description": "Destination Grepr pipe integration in the pipeline\u0027s organization.",
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "grepr-pipe-log-sink"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "integrationId",
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sinks"
+        ]
+      },
+      "GreprPipeLogSource": {
+        "properties": {
+          "integrationId": {
+            "description": "The integration id for the observability vendor.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "offsetResetStrategy": {
+            "default": "LATEST",
+            "description": "Strategy for resetting Kafka consumer offset when no committed offset exists or has expired. EARLIEST reads from oldest available offset (prevents data loss on restart after retention period). LATEST skips to newest offset (current behavior).",
+            "enum": [
+              "EARLIEST",
+              "LATEST",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "description": "Reads log events that other pipelines write into a Grepr pipe.",
+            "enum": [
+              "grepr-pipe-log-source"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "integrationId",
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
       "GreprRawLogsSource": {
         "properties": {
           "datasetId": {
@@ -8845,6 +8921,18 @@
             "default": [],
             "items": {
               "$ref": "#/components/schemas/ReadGithubMcp"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ItemsCollectionReadGreprPipe": {
+        "properties": {
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReadGreprPipe"
             },
             "type": "array"
           }
@@ -12759,6 +12847,8 @@
             "discarding-sink": "#/components/schemas/DiscardingSink",
             "event-dedup-iceberg-table-sink": "#/components/schemas/EventDedupIcebergTableSink",
             "grepr-metrics-source": "#/components/schemas/GreprMetricsSource",
+            "grepr-pipe-log-sink": "#/components/schemas/GreprPipeLogSink",
+            "grepr-pipe-log-source": "#/components/schemas/GreprPipeLogSource",
             "grepr-raw-log-source": "#/components/schemas/GreprRawLogsSource",
             "grepr-raw-span-source": "#/components/schemas/GreprRawSpanSource",
             "grepr-reducer-log-source": "#/components/schemas/GreprReducerLogSource",
@@ -12989,6 +13079,12 @@
           },
           {
             "$ref": "#/components/schemas/DiscardingSink"
+          },
+          {
+            "$ref": "#/components/schemas/GreprPipeLogSource"
+          },
+          {
+            "$ref": "#/components/schemas/GreprPipeLogSink"
           },
           {
             "$ref": "#/components/schemas/DatadogMetricsSink"
@@ -15262,6 +15358,83 @@
         ],
         "type": "object"
       },
+      "ReadGreprPipe": {
+        "properties": {
+          "createdAt": {
+            "description": "Timestamp when the integration was created.",
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "id": {
+            "description": "The integration id",
+            "type": "string"
+          },
+          "jobIds": {
+            "description": "List of job IDs associated with the integration.",
+            "items": {
+              "description": "List of job IDs associated with the integration.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "name": {
+            "description": "Name of the integration.",
+            "example": "my_integration",
+            "pattern": "[a-zA-Z0-9 _-]{1,128}",
+            "type": "string"
+          },
+          "organizationId": {
+            "description": "Organization ID of the integration.",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GreprPipe"
+          },
+          "teamIds": {
+            "description": "The team IDs that this integration is associated with.",
+            "items": {
+              "description": "The team IDs that this integration is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "description": "The type of the integration. This is used to determine the payload type.",
+            "enum": [
+              "grepr-pipe"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Timestamp when the integration was last updated.",
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "version": {
+            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+            "example": 0,
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "jobIds",
+          "name",
+          "organizationId",
+          "payload",
+          "type",
+          "updatedAt",
+          "version"
+        ],
+        "type": "object"
+      },
       "ReadInvitation": {
         "properties": {
           "createdAt": {
@@ -15720,6 +15893,11 @@
             "type": "integer"
           },
           "maxGeminiIntegrations": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxGreprPipeIntegrations": {
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -22993,6 +23171,50 @@
         ],
         "type": "object"
       },
+      "WriteGreprPipe": {
+        "properties": {
+          "name": {
+            "description": "Name of the integration.",
+            "example": "my_integration",
+            "pattern": "[a-zA-Z0-9 _-]{1,128}",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GreprPipe"
+          },
+          "teamIds": {
+            "default": [],
+            "description": "The team IDs that this integration is associated with.",
+            "items": {
+              "description": "The team IDs that this integration is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "description": "The type of the integration. This is used to determine the payload type.",
+            "enum": [
+              "grepr-pipe"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+            "example": 0,
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "payload",
+          "type",
+          "version"
+        ],
+        "type": "object"
+      },
       "WriteLiteLlm": {
         "properties": {
           "name": {
@@ -29209,6 +29431,225 @@
         "summary": "Creates or updates a GitHub MCP integration token",
         "tags": [
           "GitHub MCP Integration"
+        ]
+      }
+    },
+    "/v1/integrations/grepr-pipe": {
+      "get": {
+        "description": "Get all Grepr pipe integrations.",
+        "operationId": "listGreprPipeIntegrations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsCollectionReadGreprPipe"
+                }
+              }
+            },
+            "description": "Integrations retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "List all Grepr pipe integrations",
+        "tags": [
+          "Grepr Pipe Integration"
+        ]
+      },
+      "post": {
+        "description": "Creates a pipe that pipelines write log events into with a pipe sink and read them from with a pipe source.",
+        "operationId": "createGreprPipeIntegration",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteGreprPipe"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadGreprPipe"
+                }
+              }
+            },
+            "description": "Integration created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadGreprPipe"
+                }
+              }
+            },
+            "description": "Integration already exists."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Create a Grepr pipe integration",
+        "tags": [
+          "Grepr Pipe Integration"
+        ]
+      }
+    },
+    "/v1/integrations/grepr-pipe/{id}": {
+      "delete": {
+        "description": "Deletes a Grepr pipe integration and its topic. Rejected while a pipeline uses it. No-op if already deleted.",
+        "operationId": "deleteGreprPipeIntegration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Integration deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Delete a Grepr pipe integration",
+        "tags": [
+          "Grepr Pipe Integration"
+        ]
+      },
+      "get": {
+        "description": "Get a Grepr pipe integration.",
+        "operationId": "getGreprPipeIntegration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadGreprPipe"
+                }
+              }
+            },
+            "description": "Integration retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get a Grepr pipe integration",
+        "tags": [
+          "Grepr Pipe Integration"
+        ]
+      },
+      "put": {
+        "description": "Updates a Grepr pipe integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+        "operationId": "updateGreprPipeIntegration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteGreprPipe"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadGreprPipe"
+                }
+              }
+            },
+            "description": "Integration updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          },
+          "409": {
+            "description": "Integration was modified or deleted concurrently."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Update a Grepr pipe integration.",
+        "tags": [
+          "Grepr Pipe Integration"
         ]
       }
     },

@@ -38,6 +38,7 @@ var integrationRoutes = map[string]integrationOperations{
 	"otlp":              {(*api).CreateOtlpIntegrationWithBody, (*api).GetOtlpIntegration, (*api).UpdateOtlpIntegrationWithBody, (*api).DeleteOtlpIntegration},
 	"data-warehouse":    {(*api).CreateDataWarehouseIntegrationWithBody, (*api).GetDataWarehouseIntegration, (*api).UpdateDataWarehouseIntegrationWithBody, (*api).DeleteDataWarehouseIntegration},
 	"s3-data-warehouse": {(*api).CreateS3DataWarehouseIntegrationWithBody, (*api).GetS3DataWarehouseIntegration, (*api).UpdateS3DataWarehouseIntegrationWithBody, (*api).DeleteS3DataWarehouseIntegration},
+	"grepr-pipe":        {(*api).CreateGreprPipeIntegrationWithBody, (*api).GetGreprPipeIntegration, (*api).UpdateGreprPipeIntegrationWithBody, (*api).DeleteGreprPipeIntegration},
 }
 
 // secretEndpoints are the generated calls that write one secret, by type and endpoint.

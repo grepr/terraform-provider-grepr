@@ -36,7 +36,7 @@ func (p *fixtureProvider) Configure(_ context.Context, _ provider.ConfigureReque
 	r.ResourceData = p.api
 }
 func (p *fixtureProvider) Resources(context.Context) []func() resource.Resource {
-	return []func() resource.Resource{NewDatadogResource, NewSplunkResource, NewNewRelicResource, NewSumoResource, NewOTLPResource, NewDataWarehouseResource, NewS3DataWarehouseResource}
+	return []func() resource.Resource{NewDatadogResource, NewSplunkResource, NewNewRelicResource, NewSumoResource, NewOTLPResource, NewDataWarehouseResource, NewS3DataWarehouseResource, NewPipeResource}
 }
 func (p *fixtureProvider) DataSources(context.Context) []func() datasource.DataSource { return nil }
 
@@ -479,6 +479,28 @@ endpoint = "https://collectors.sumologic.com/receiver/v1/http/code"`)
 	warehouse.reimport()
 	warehouse.noChanges()
 	warehouse.destroy()
+}
+
+func TestPipeLifecycle(t *testing.T) {
+	h := newHarness(t, "grepr_pipe_integration.test")
+	h.config(`name = "routed"`)
+	h.apply()
+	h.noChanges()
+	id := h.only()
+	if got := h.api.integrations[id]; got.Type != "grepr-pipe" || len(got.Payload) != 0 {
+		t.Fatalf("pipe must be created with its type and an empty payload: %v", got)
+	}
+
+	h.config(`name = "renamed"`)
+	h.apply()
+	h.noChanges()
+	if h.api.integrations[id].Name != "renamed" || h.api.integrations[id].Version != 2 {
+		t.Fatalf("rename not applied: %v", h.api.integrations[id])
+	}
+
+	h.reimport()
+	h.noChanges()
+	h.destroy()
 }
 
 func TestS3WarehouseBucketChangeReplaces(t *testing.T) {

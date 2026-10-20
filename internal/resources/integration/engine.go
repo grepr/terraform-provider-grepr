@@ -38,7 +38,10 @@ type API interface {
 // from the API spec.
 type Kind[M, P any] struct {
 	// Type is the resource name infix, the envelope type, and the API route, e.g. "datadog".
-	Type        string
+	Type string
+	// Name replaces Type as the resource name infix, for a type whose name would
+	// repeat the provider's, e.g. "pipe" for "grepr-pipe". Optional.
+	Name        string
 	Description string
 	Attributes  map[string]schema.Attribute
 	// ClearReadOnly removes the fields the server fills on reads and rejects on
@@ -86,7 +89,11 @@ type privateState interface {
 }
 
 func (r *integrationResource[M, P]) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_" + typeNameSuffix(r.kind.Type)
+	name := r.kind.Type
+	if r.kind.Name != "" {
+		name = r.kind.Name
+	}
+	resp.TypeName = req.ProviderTypeName + "_" + typeNameSuffix(name)
 }
 
 func (r *integrationResource[M, P]) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
