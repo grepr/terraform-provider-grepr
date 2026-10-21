@@ -20,4 +20,8 @@ const (
 	// EndpointJob is the path template for getting/updating/deleting a specific job.
 	// Use fmt.Sprintf(EndpointJob, jobID) to construct the full path.
 	EndpointJob = "/api/v1/jobs/%s"
+
+	// EndpointJobTags is the path template for replacing a job's tags in place.
+	// Use fmt.Sprintf(EndpointJobTags, jobID) to construct the full path.
+	EndpointJobTags = "/api/v1/jobs/%s/tags"
 )

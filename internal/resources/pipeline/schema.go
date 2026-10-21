@@ -106,10 +106,10 @@ func PipelineSchema() schema.Schema {
 				ElementType:         types.StringType,
 			},
 			"tags": schema.MapAttribute{
-				MarkdownDescription: "Custom tags for the pipeline. Tags are set when the pipeline is created. " +
-					"The update API does not accept tags, so for an existing pipeline the configured tags must " +
-					"match the tags it already has. Leave tags unset to keep the existing tags, including " +
-					"`grepr-ui-managed`.",
+				MarkdownDescription: "Custom tags for the pipeline. The configured tags are the pipeline's full " +
+					"set of tags: changing them replaces the pipeline's tags in place, without a new version or a " +
+					"redeploy, and tags left out are removed, including `grepr-ui-managed`. Tags can change only " +
+					"while the pipeline is running or stopped. Leave tags unset to keep the pipeline's existing tags.",
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.StringType,
@@ -118,7 +118,6 @@ func PipelineSchema() schema.Schema {
 				},
 				PlanModifiers: []planmodifier.Map{
 					mapplanmodifier.UseStateForUnknown(),
-					createOnlyTags{},
 				},
 			},
 			"wait_for_state": schema.BoolAttribute{

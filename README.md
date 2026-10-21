@@ -196,7 +196,7 @@ output "pipeline_state" {
 
 **Adopt Existing Pipelines**: If an active pipeline with the specified name already exists, the provider will adopt it into Terraform management rather than failing. Any differences between the Terraform configuration and the existing pipeline will be applied as an update. If the only pipeline with that name is in a terminal state (`DELETED`, `FAILED`, `FINISHED`, or `CANCELLED`), the name is free to reuse and a brand new pipeline is created instead.
 
-**Tags**: Grepr sets tags only when it creates a pipeline, because the update API does not accept tags. For an existing or adopted pipeline, the configured tags must match the tags it already has. Leave `tags` unset to keep the existing tags, including `grepr-ui-managed`. Tag keys that start with `__grepr__` are reserved.
+**Tags**: The configured `tags` are the pipeline's full set of tags. Changing them replaces the pipeline's tags in place through `PUT /v1/jobs/{id}/tags`, without a new version or a redeploy; when nothing else changed, the provider skips the job update entirely. Tags left out are removed, including `grepr-ui-managed`, which the UI needs to edit the pipeline. Leave `tags` unset to keep the existing tags. Tag keys that start with `__grepr__` are reserved; the server enforces the remaining limits.
 
 **Version Conflict Handling**: The provider uses optimistic locking. If a pipeline is modified by another process between read and update, the operation will fail with a conflict error. Run `terraform refresh` and retry.
 

@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/big"
 	"reflect"
 	"regexp"
@@ -27,6 +28,7 @@ import (
 	"github.com/grepr/terraform-provider-grepr/internal/client"
 	"github.com/grepr/terraform-provider-grepr/internal/client/generated"
 	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -90,8 +92,8 @@ func (r *PipelineResource) Configure(ctx context.Context, req resource.Configure
 //   - Recover from partial failures where the resource was created but not tracked
 //
 // After adoption, if the plan differs from the existing pipeline's configuration,
-// an update will be performed to reconcile them. The update API cannot change tags,
-// so configured tags must match the tags of the existing pipeline.
+// an update will be performed to reconcile them. Configured tags replace the
+// pipeline's tags; unset tags keep them.
 //
 // If the only pipeline with that name is in a terminal state (DELETED, FAILED, FINISHED,
 // or CANCELLED), the name is free to reuse, so a brand new pipeline is created rather than
@@ -115,6 +117,9 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 
 	var job *client.Job
 	var jobGraphJSONToPreserve string
+	// Tags of an adopted pipeline that wait until it is stable.
+	var lateTags map[string]string
+	var lateTagsChanged bool
 
 	if existingJob != nil && !client.IsTerminal(existingJob.State) {
 		// Adopt the existing active pipeline
@@ -123,22 +128,24 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 			"id":   existingJob.Id,
 		})
 		job = existingJob
-
-		configuredTags, err := r.extractTags(ctx, plan.Tags)
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to extract tags", err.Error())
-			return
-		}
 		jobGraphJSONToPreserve = plan.JobGraphJSON.ValueString()
 
-		// The update API cannot change tags, so configured tags must already match.
-		checkTagsUnchanged(&resp.Diagnostics, configuredTags, existingJob.Tags)
-		if resp.Diagnostics.HasError() {
-			return
+		// Tags left unset are unknown here, so an adopted pipeline keeps its own.
+		tags, changed, diags := tagsToApply(ctx, plan.Tags, existingJob.Tags)
+		resp.Diagnostics.Append(diags...)
+		jobChanged := r.needsUpdate(ctx, plan, existingJob)
+		if tagsBeforeJobUpdate(existingJob.State, jobChanged) {
+			if updatedJob, ok := r.applyTags(ctx, &resp.Diagnostics, existingJob.Id, tags, changed); ok {
+				job = updatedJob
+			} else if resp.Diagnostics.HasError() {
+				return
+			}
+		} else {
+			lateTags, lateTagsChanged = tags, changed
 		}
 
 		// Apply any differences as an update
-		if r.needsUpdate(ctx, plan, existingJob) {
+		if jobChanged {
 			updateReq, err := r.buildUpdateRequest(ctx, plan, existingJob)
 			if err != nil {
 				resp.Diagnostics.AddError("Failed to build update request", err.Error())
@@ -210,6 +217,10 @@ func (r *PipelineResource) Create(ctx context.Context, req resource.CreateReques
 		if stableJob != nil {
 			job = stableJob
 		}
+	}
+
+	if updatedJob, ok := r.applyTags(ctx, &resp.Diagnostics, job.Id, lateTags, lateTagsChanged); ok {
+		job = updatedJob
 	}
 
 	// Update state from the job, but preserve the original request for job_graph_json, tags, and desired state
@@ -286,28 +297,50 @@ func (r *PipelineResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	updateReq, err := r.buildUpdateRequest(ctx, plan, currentJob)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to build update request", err.Error())
+	job := currentJob
+	tags, tagsChanged, diags := tagsToUpdate(ctx, plan, state)
+	resp.Diagnostics.Append(diags...)
+	// A job update creates a version and redeploys, so skip it when only tags or
+	// the provider's own settings changed.
+	jobChanged, diags := needsJobUpdate(ctx, plan, state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	tflog.Debug(ctx, "Updating pipeline", map[string]interface{}{
-		"id":          id,
-		"fromVersion": currentJob.Version,
-	})
-
-	job, err := r.client.UpdateJob(ctx, id, *updateReq, plan.RollbackEnabled.ValueBool())
-	if err != nil {
-		if apiErr, ok := err.(*client.APIError); ok && apiErr.IsConflict() {
-			resp.Diagnostics.AddError(
-				"Version Conflict",
-				"The pipeline was modified by another process. Please run terraform refresh and try again.",
-			)
+	tagsFirst := tagsBeforeJobUpdate(currentJob.State, jobChanged)
+	if tagsFirst {
+		if updatedJob, ok := r.applyTags(ctx, &resp.Diagnostics, currentJob.Id, tags, tagsChanged); ok {
+			job = updatedJob
+		} else if resp.Diagnostics.HasError() {
 			return
 		}
-		resp.Diagnostics.AddError("Failed to update pipeline", err.Error())
-		return
+	}
+
+	if jobChanged {
+		updateReq, err := r.buildUpdateRequest(ctx, plan, currentJob)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to build update request", err.Error())
+			return
+		}
+
+		tflog.Debug(ctx, "Updating pipeline", map[string]interface{}{
+			"id":          id,
+			"fromVersion": currentJob.Version,
+		})
+
+		job, err = r.client.UpdateJob(ctx, id, *updateReq, plan.RollbackEnabled.ValueBool())
+		if err != nil {
+			if apiErr, ok := err.(*client.APIError); ok && apiErr.IsConflict() {
+				resp.Diagnostics.AddError(
+					"Version Conflict",
+					"The pipeline was modified by another process. Please run terraform refresh and try again.",
+				)
+				return
+			}
+			resp.Diagnostics.AddError("Failed to update pipeline", err.Error())
+			return
+		}
 	}
 
 	// Wait for stable state if requested
@@ -324,6 +357,12 @@ func (r *PipelineResource) Update(ctx context.Context, req resource.UpdateReques
 		}
 		if stableJob != nil {
 			job = stableJob
+		}
+	}
+
+	if !tagsFirst {
+		if updatedJob, ok := r.applyTags(ctx, &resp.Diagnostics, job.Id, tags, tagsChanged); ok {
+			job = updatedJob
 		}
 	}
 
@@ -513,6 +552,74 @@ func (r *PipelineResource) needsUpdate(ctx context.Context, plan PipelineResourc
 	}
 
 	return false
+}
+
+// tagsBeforeJobUpdate reports whether the tags are applied before the job update.
+// Tags go first so that the job update copies them into the version it creates.
+// The server takes tag edits only while the pipeline is running or stopped, so
+// from any other state the job update goes first (it can fix a failed
+// pipeline) and the tags follow after the wait for the desired state.
+func tagsBeforeJobUpdate(state client.JobState, jobChanged bool) bool {
+	return !jobChanged || state == client.JobStateRunning || state == client.JobStateStopped
+}
+
+// applyTags replaces the pipeline's tags when changed is true. It returns the
+// updated job and true when it changed the tags, and false when there was
+// nothing to change or the call failed, which it reports in diags.
+func (r *PipelineResource) applyTags(ctx context.Context, diags *diag.Diagnostics, jobID string, tags map[string]string, changed bool) (*client.Job, bool) {
+	if diags.HasError() || !changed {
+		return nil, false
+	}
+	job, err := r.client.UpdateJobTags(ctx, jobID, tags)
+	if err != nil {
+		diags.AddError("Failed to update pipeline tags", err.Error())
+		return nil, false
+	}
+	return job, true
+}
+
+// tagsToUpdate returns the planned tags and true when the plan changes the tags
+// Terraform last recorded. It compares with state, not the live pipeline: with
+// tags unset or under ignore_changes the plan carries the state's tags, even
+// from a saved plan, so tags edited elsewhere stay unless the configuration
+// asks for different ones.
+func tagsToUpdate(ctx context.Context, plan, state PipelineResourceModel) (map[string]string, bool, diag.Diagnostics) {
+	var recorded map[string]string
+	if !state.Tags.IsNull() && !state.Tags.IsUnknown() {
+		if diags := state.Tags.ElementsAs(ctx, &recorded, false); diags.HasError() {
+			return nil, false, diags
+		}
+	}
+	return tagsToApply(ctx, plan.Tags, recorded)
+}
+
+// tagsToApply returns the planned tags and true when they differ from current.
+// Unset or unknown planned tags keep current, and no tags and an empty map are
+// the same.
+func tagsToApply(ctx context.Context, planned types.Map, current map[string]string) (map[string]string, bool, diag.Diagnostics) {
+	if planned.IsNull() || planned.IsUnknown() {
+		return nil, false, nil
+	}
+	tags := map[string]string{}
+	diags := planned.ElementsAs(ctx, &tags, false)
+	if diags.HasError() {
+		return nil, false, diags
+	}
+	return tags, !maps.Equal(tags, current), diags
+}
+
+// needsJobUpdate reports whether the plan changes what the job update API
+// carries: the graph, the desired state, or the teams. Tags have their own
+// endpoint, and the provider's own settings never reach the API.
+func needsJobUpdate(ctx context.Context, plan, state PipelineResourceModel) (bool, diag.Diagnostics) {
+	sameGraph, diags := plan.JobGraphJSON.StringSemanticEquals(ctx, state.JobGraphJSON)
+	if diags.HasError() {
+		return false, diags
+	}
+	changed := !sameGraph ||
+		!plan.DesiredState.Equal(state.DesiredState) ||
+		!plan.TeamIDs.Equal(state.TeamIDs)
+	return changed, diags
 }
 
 // originalJobData holds values from the original Terraform plan that should be

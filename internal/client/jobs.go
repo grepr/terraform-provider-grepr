@@ -94,6 +94,29 @@ func (c *Client) UpdateJob(ctx context.Context, id string, req UpdateJobRequest,
 	return &job, nil
 }
 
+// UpdateJobTags replaces a job's tags in place, without creating a new version
+// or redeploying it. The tags are the job's full set of visible tags; nil or
+// empty clears them.
+func (c *Client) UpdateJobTags(ctx context.Context, id string, tags map[string]string) (*Job, error) {
+	// The server refuses a null body, so no tags is sent as {}.
+	if tags == nil {
+		tags = map[string]string{}
+	}
+	path := fmt.Sprintf(EndpointJobTags, url.PathEscape(id))
+
+	resp, err := c.doRequest(ctx, http.MethodPut, path, tags)
+	if err != nil {
+		return nil, err
+	}
+
+	var job Job
+	if err := handleResponse(resp, &job); err != nil {
+		return nil, err
+	}
+
+	return &job, nil
+}
+
 // DeleteJob deletes a job by ID.
 func (c *Client) DeleteJob(ctx context.Context, id string) error {
 	path := fmt.Sprintf(EndpointJob, url.PathEscape(id))

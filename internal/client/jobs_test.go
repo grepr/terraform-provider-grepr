@@ -6,8 +6,10 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -289,6 +291,83 @@ func TestClient_UpdateJob(t *testing.T) {
 
 	if job.Version != 2 {
 		t.Errorf("expected Version 2, got %d", job.Version)
+	}
+}
+
+// TestClient_UpdateJobTags verifies that UpdateJobTags() sends the full tag map
+// to the tags endpoint and returns the job the server reports.
+func TestClient_UpdateJobTags(t *testing.T) {
+	expectedJob := Job{
+		Id:      "test-id-123",
+		Version: 1,
+		Name:    "test_pipeline",
+		Tags:    map[string]string{"env": "prod"},
+	}
+
+	server, client := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/v1/jobs/test-id-123/tags" {
+			t.Errorf("expected /api/v1/jobs/test-id-123/tags, got %s", r.URL.Path)
+		}
+
+		var tags map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&tags); err != nil {
+			t.Fatalf("failed to decode request: %v", err)
+		}
+		if len(tags) != 1 || tags["env"] != "prod" {
+			t.Errorf("expected {env: prod}, got %v", tags)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(expectedJob)
+	})
+	defer server.Close()
+
+	job, err := client.UpdateJobTags(context.Background(), "test-id-123", map[string]string{"env": "prod"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if job.Tags["env"] != "prod" {
+		t.Errorf("expected the server's tags, got %v", job.Tags)
+	}
+}
+
+// TestClient_UpdateJobTags_EmptyMapSendsObject verifies that clearing all tags
+// sends {} rather than null, which the server rejects.
+func TestClient_UpdateJobTags_EmptyMapSendsObject(t *testing.T) {
+	server, client := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		body := new(strings.Builder)
+		_, _ = io.Copy(body, r.Body)
+		if strings.TrimSpace(body.String()) != "{}" {
+			t.Errorf("expected body {}, got %q", body.String())
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(Job{Id: "test-id-123"})
+	})
+	defer server.Close()
+
+	if _, err := client.UpdateJobTags(context.Background(), "test-id-123", nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// TestClient_UpdateJobTags_BadRequest verifies that a refused tag update returns
+// an APIError carrying the server's message.
+func TestClient_UpdateJobTags_BadRequest(t *testing.T) {
+	server, client := setupTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"code":400,"message":"A pipeline can have at most 10 tags, got 11."}`))
+	})
+	defer server.Close()
+
+	_, err := client.UpdateJobTags(context.Background(), "test-id-123", map[string]string{"env": "prod"})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if !strings.Contains(err.Error(), "at most 10 tags") {
+		t.Errorf("expected the server's message, got %v", err)
 	}
 }
 

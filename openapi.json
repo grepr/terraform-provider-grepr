@@ -36459,6 +36459,72 @@
         ]
       }
     },
+    "/v1/jobs/{id}/tags": {
+      "put": {
+        "description": "Replaces all tags on the job\u0027s latest version. This does not create a new version or restart the job. Tags can be changed only while the pipeline is running or stopped. A job can have at most 10 tags; keys can be at most 64 characters and values at most 256.",
+        "operationId": "updateJobTags",
+        "parameters": [
+          {
+            "description": "Id of the job",
+            "example": "0ABC12DEF4G",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadJob"
+                }
+              }
+            },
+            "description": "Tags updated"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Job not found."
+          },
+          "409": {
+            "description": "The pipeline is not running or stopped."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Update Job Tags",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
     "/v1/llm-usage/{integrationId}": {
       "get": {
         "operationId": "currentWindow",

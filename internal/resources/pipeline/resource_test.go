@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"strings"
 	"testing"
 
@@ -417,5 +418,163 @@ func TestRefreshedJobGraphKeepsNumberSpelling(t *testing.T) {
 	}
 	if !strings.Contains(refreshed, `"dedupThreshold":9`) {
 		t.Errorf("changed number was not refreshed: %s", refreshed)
+	}
+}
+
+func stringMap(t *testing.T, m map[string]string) types.Map {
+	t.Helper()
+	value, diags := types.MapValueFrom(context.Background(), types.StringType, m)
+	if diags.HasError() {
+		t.Fatalf("failed to build map: %v", diags)
+	}
+	return value
+}
+
+// Tags are sent only when the planned set is known and differs from the tags
+// compared against; unknown planned tags (left unset on adoption) keep the
+// pipeline's.
+func TestTagsToApply(t *testing.T) {
+	current := map[string]string{"grepr-ui-managed": "true", "env": "prod"}
+	staging := map[string]string{"env": "staging"}
+	tests := []struct {
+		name        string
+		planned     types.Map
+		current     map[string]string
+		wantChanged bool
+		wantTags    map[string]string
+	}{
+		{name: "unknown tags keep the pipeline's", planned: types.MapUnknown(types.StringType), current: current},
+		{name: "unset tags keep the pipeline's", planned: types.MapNull(types.StringType), current: current},
+		{name: "same tags send nothing", planned: stringMap(t, current), current: current},
+		{name: "empty matches no tags", planned: stringMap(t, map[string]string{}), current: nil},
+		{
+			name:        "changed tags are sent in full",
+			planned:     stringMap(t, staging),
+			current:     current,
+			wantChanged: true,
+			wantTags:    staging,
+		},
+		{
+			name:        "empty clears existing tags",
+			planned:     stringMap(t, map[string]string{}),
+			current:     current,
+			wantChanged: true,
+			wantTags:    map[string]string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags, changed, diags := tagsToApply(context.Background(), tt.planned, tt.current)
+			if diags.HasError() {
+				t.Fatalf("unexpected diagnostics: %v", diags)
+			}
+			if changed != tt.wantChanged {
+				t.Fatalf("expected changed=%t, got %t", tt.wantChanged, changed)
+			}
+			if changed && !maps.Equal(tags, tt.wantTags) {
+				t.Errorf("expected tags %v, got %v", tt.wantTags, tags)
+			}
+		})
+	}
+}
+
+// Update compares the planned tags with state, never with the live pipeline: with
+// tags unset or under ignore_changes the plan carries the state's tags, even from
+// a saved plan made before someone edited the tags elsewhere, so those edits stay.
+func TestTagsToUpdate(t *testing.T) {
+	ctx := context.Background()
+	prod := map[string]string{"env": "prod"}
+	staging := map[string]string{"env": "staging"}
+
+	_, changed, diags := tagsToUpdate(ctx,
+		PipelineResourceModel{Tags: stringMap(t, prod)},
+		PipelineResourceModel{Tags: stringMap(t, prod)})
+	if diags.HasError() || changed {
+		t.Errorf("a plan that keeps the recorded tags must send nothing, got changed=%t diags=%v", changed, diags)
+	}
+
+	tags, changed, diags := tagsToUpdate(ctx,
+		PipelineResourceModel{Tags: stringMap(t, staging)},
+		PipelineResourceModel{Tags: stringMap(t, prod)})
+	if diags.HasError() || !changed || !maps.Equal(tags, staging) {
+		t.Errorf("a plan that changes the tags must send them, got changed=%t tags=%v diags=%v", changed, tags, diags)
+	}
+}
+
+// The job update creates a version and redeploys, so it runs only when the
+// graph, desired state, or teams change, never for tags or provider settings.
+func TestNeedsJobUpdate(t *testing.T) {
+	ctx := context.Background()
+	base := PipelineResourceModel{
+		JobGraphJSON: jsontypes.NewNormalizedValue(testGraphJSON),
+		DesiredState: types.StringValue("RUNNING"),
+		TeamIDs:      types.SetNull(types.StringType),
+		Tags:         stringMap(t, map[string]string{"env": "prod"}),
+		WaitForState: types.BoolValue(true),
+	}
+	teams, _ := types.SetValueFrom(ctx, types.StringType, []string{"team-1"})
+	tests := []struct {
+		name   string
+		change func(m *PipelineResourceModel)
+		want   bool
+	}{
+		{name: "nothing changed", change: func(m *PipelineResourceModel) {}},
+		{name: "only tags changed", change: func(m *PipelineResourceModel) {
+			m.Tags = stringMap(t, map[string]string{"env": "staging"})
+		}},
+		{name: "only a provider setting changed", change: func(m *PipelineResourceModel) {
+			m.WaitForState = types.BoolValue(false)
+		}},
+		{name: "graph reformatted only", change: func(m *PipelineResourceModel) {
+			m.JobGraphJSON = jsontypes.NewNormalizedValue(
+				`{ "edges": [], "vertices": [{"inverted": false, "name": "f", "type": "logs-filter"}] }`)
+		}},
+		{name: "graph changed", want: true, change: func(m *PipelineResourceModel) {
+			m.JobGraphJSON = jsontypes.NewNormalizedValue(`{"vertices":[],"edges":[]}`)
+		}},
+		{name: "desired state changed", want: true, change: func(m *PipelineResourceModel) {
+			m.DesiredState = types.StringValue("STOPPED")
+		}},
+		{name: "teams changed", want: true, change: func(m *PipelineResourceModel) {
+			m.TeamIDs = teams
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			plan := base
+			tt.change(&plan)
+			got, diags := needsJobUpdate(ctx, plan, base)
+			if diags.HasError() {
+				t.Fatalf("unexpected diagnostics: %v", diags)
+			}
+			if got != tt.want {
+				t.Errorf("expected needsJobUpdate=%t, got %t", tt.want, got)
+			}
+		})
+	}
+}
+
+// The server takes tag edits only while the pipeline is running or stopped. From
+// any other state a job update, such as a graph fix for a failed pipeline, must
+// go first, so a tag change in the same apply cannot block it.
+func TestTagsBeforeJobUpdate(t *testing.T) {
+	tests := []struct {
+		name       string
+		state      client.JobState
+		jobChanged bool
+		want       bool
+	}{
+		{name: "running with a job update", state: client.JobStateRunning, jobChanged: true, want: true},
+		{name: "stopped with a job update", state: client.JobStateStopped, jobChanged: true, want: true},
+		{name: "failed with a graph fix", state: client.JobStateFailed, jobChanged: true, want: false},
+		{name: "updating with a job update", state: client.JobStateUpdating, jobChanged: true, want: false},
+		{name: "failed with only a tag change", state: client.JobStateFailed, jobChanged: false, want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tagsBeforeJobUpdate(tt.state, tt.jobChanged); got != tt.want {
+				t.Errorf("expected tagsBeforeJobUpdate(%s, %t)=%t, got %t", tt.state, tt.jobChanged, tt.want, got)
+			}
+		})
 	}
 }

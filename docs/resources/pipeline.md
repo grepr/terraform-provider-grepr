@@ -76,7 +76,7 @@ output "pipeline_health" {
 - `desired_state` (String) The desired state of the pipeline. Valid values are `RUNNING` or `STOPPED`. Defaults to `RUNNING`.
 - `rollback_enabled` (Boolean) Whether to roll the pipeline back to its last stable configuration when an update fails. Defaults to `true`, matching the UI.
 - `state_timeout` (Number) Timeout in seconds for waiting for state transitions. Defaults to `600` (10 minutes).
-- `tags` (Map of String) Custom tags for the pipeline. Tags are set when the pipeline is created. The update API does not accept tags, so for an existing pipeline the configured tags must match the tags it already has. Leave tags unset to keep the existing tags, including `grepr-ui-managed`.
+- `tags` (Map of String) Custom tags for the pipeline. The configured tags are the pipeline's full set of tags: changing them replaces the pipeline's tags in place, without a new version or a redeploy, and tags left out are removed, including `grepr-ui-managed`. Tags can change only while the pipeline is running or stopped. Leave tags unset to keep the pipeline's existing tags.
 - `team_ids` (Set of String) Set of team IDs that this pipeline is associated with.
 - `wait_for_state` (Boolean) Whether to wait for the pipeline to reach the desired state after create/update operations. Defaults to `true`.
 
