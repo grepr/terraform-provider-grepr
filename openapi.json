@@ -3418,6 +3418,60 @@
         ],
         "type": "object"
       },
+      "CancelAllInvestigationsResponse": {
+        "properties": {
+          "cancelling": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "paused": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cancelling",
+          "paused"
+        ],
+        "type": "object"
+      },
+      "CancellableInvestigationCounts": {
+        "properties": {
+          "paused": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "queued": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "running": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "paused",
+          "queued",
+          "running"
+        ],
+        "type": "object"
+      },
+      "CancellableInvestigationsResponse": {
+        "properties": {
+          "canCancel": {
+            "type": "boolean"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CancellableInvestigationCounts"
+          }
+        },
+        "required": [
+          "canCancel",
+          "counts"
+        ],
+        "type": "object"
+      },
       "ChainNode": {
         "description": "One node of the recursive chain tree. Every chain (and every nested chain) is rooted at a ChainNode; the recursion terminates at a DropNode or PassthroughNode leaf.",
         "discriminator": {
@@ -25192,6 +25246,107 @@
         ]
       }
     },
+    "/v1/agents/{id}/investigations/cancel-all": {
+      "post": {
+        "description": "Marks every queued, running, and paused investigation of the agent as CANCELLING in one request. Cancellation is completed asynchronously. With pause\u003dtrue, the agent is paused in the same transaction so it starts no new investigations.",
+        "operationId": "cancelAllAgentInvestigations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Also pause the agent",
+            "in": "query",
+            "name": "pause",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelAllInvestigationsResponse"
+                }
+              }
+            },
+            "description": "Cancellation requests recorded"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Agent not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Cancel every active investigation of an agent",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/v1/agents/{id}/investigations/cancellable-counts": {
+      "get": {
+        "description": "Returns how many of the agent\u0027s investigations are queued, running, or paused, and so would be cancelled by cancel-all, and whether the caller is authorized to call cancel-all for the agent.",
+        "operationId": "countCancellableAgentInvestigations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancellableInvestigationsResponse"
+                }
+              }
+            },
+            "description": "Counts retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Agent not found"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Count an agent\u0027s active investigations",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
     "/v1/agents/{id}/issue-reach": {
       "get": {
         "description": "Returns whose issues the agent reads, and whose it can be handed, pick up and change: every issue in your organization or those of some teams, from its service account\u0027s issue scopes.",
@@ -33952,6 +34107,83 @@
           }
         ],
         "summary": "Cancel multiple investigations",
+        "tags": [
+          "Investigations"
+        ]
+      }
+    },
+    "/v1/investigations/cancel-all": {
+      "post": {
+        "description": "Marks every queued, running, and paused investigation of every agent in the organization as CANCELLING in one request. Cancellation is completed asynchronously. With pause\u003dtrue, every active agent is paused in the same transaction so none starts new investigations; resume each agent to undo it.",
+        "operationId": "cancelAllInvestigations",
+        "parameters": [
+          {
+            "description": "Also pause every active agent in the organization",
+            "in": "query",
+            "name": "pause",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelAllInvestigationsResponse"
+                }
+              }
+            },
+            "description": "Cancellation requests recorded"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Cancel every active investigation in the organization",
+        "tags": [
+          "Investigations"
+        ]
+      }
+    },
+    "/v1/investigations/cancellable-counts": {
+      "get": {
+        "description": "Returns how many investigations across every agent in the organization are queued, running, or paused, and so would be cancelled by cancel-all, and whether the caller is authorized to call cancel-all.",
+        "operationId": "countCancellableInvestigations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancellableInvestigationsResponse"
+                }
+              }
+            },
+            "description": "Counts retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Count the organization\u0027s active investigations",
         "tags": [
           "Investigations"
         ]
