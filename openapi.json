@@ -6876,8 +6876,9 @@
             "type": "string"
           },
           "uploadId": {
-            "description": "Unique identifier for the upload. The full S3 path will be constructed as uploaded_files/{organizationId}/{uploadId} to ensure customers can only access their own uploads.",
-            "example": "abc123def456",
+            "description": "Unique identifier for the upload. The full S3 path will be constructed as uploaded_files/{organizationId}/{uploadId} to ensure customers can only access their own uploads. Use the uploadId returned by the file upload endpoint.",
+            "example": "3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c",
+            "pattern": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
             "type": "string"
           }
         },
@@ -14439,8 +14440,9 @@
             "type": "string"
           },
           "uploadId": {
-            "description": "Unique identifier for this upload",
-            "example": "abc123def456",
+            "description": "Unique identifier for this upload. Pass it as the uploadId of a grepr-uploaded-log-file-source to read the uploaded file.",
+            "example": "3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c",
+            "pattern": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
             "type": "string"
           }
         },
