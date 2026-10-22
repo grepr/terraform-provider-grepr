@@ -4304,10 +4304,10 @@
           },
           "entities": {
             "additionalProperties": {
-              "description": "The `entity:*` tags it concerns; an unprefixed key is put in the `entity:` namespace.",
+              "description": "The `entity:*` tags it concerns; an unprefixed key is put in the `entity:` namespace. Keys are stored in lower case, and values as given; searches match both in any case.",
               "type": "string"
             },
-            "description": "The `entity:*` tags it concerns; an unprefixed key is put in the `entity:` namespace.",
+            "description": "The `entity:*` tags it concerns; an unprefixed key is put in the `entity:` namespace. Keys are stored in lower case, and values as given; searches match both in any case.",
             "type": "object"
           },
           "evidence": {
@@ -7869,10 +7869,10 @@
           },
           "entities": {
             "additionalProperties": {
-              "description": "The `entity:*` tags it concerns, the same vocabulary as memory tags, sorted by key.",
+              "description": "The `entity:*` tags it concerns, the same vocabulary as memory tags, keys in lower case, sorted by key.",
               "type": "string"
             },
-            "description": "The `entity:*` tags it concerns, the same vocabulary as memory tags, sorted by key.",
+            "description": "The `entity:*` tags it concerns, the same vocabulary as memory tags, keys in lower case, sorted by key.",
             "type": "object"
           },
           "evidence": {
@@ -8465,7 +8465,7 @@
         "type": "object"
       },
       "IssueGuidanceRead": {
-        "description": "One investigation whose agent was given a guidance comment in its known-issues context.",
+        "description": "One investigation whose agent was given a guidance comment: returned by its `get_issue`, or in the issue it was handed.",
         "properties": {
           "agentId": {
             "description": "The investigation\u0027s agent, or null when the investigation no longer exists.",
@@ -17408,7 +17408,7 @@
             "$ref": "#/components/schemas/IssueAssigneeFilter"
           },
           "closedWithinDays": {
-            "description": "Include closed issues closed within this many days. Absent: 30 when `states` is absent, and no window when it is given.",
+            "description": "Include closed issues closed within this many days. Absent: 30 when `states` is absent, with those closed as IGNORED or NOT_A_PROBLEM kept at any age, and no window when it is given. Given, it\u0027s exact.",
             "format": "int32",
             "maximum": 3650,
             "minimum": 0,
@@ -17422,14 +17422,14 @@
           },
           "entities": {
             "additionalProperties": {
-              "description": "Entity tags to match: every key must match, and any of a key\u0027s values matches it. An unprefixed key is put in the `entity:` namespace.",
+              "description": "Entity tags to match: every key must match, and any of a key\u0027s values matches it. Keys and values match in any case. An unprefixed key is put in the `entity:` namespace.",
               "items": {
-                "description": "Entity tags to match: every key must match, and any of a key\u0027s values matches it. An unprefixed key is put in the `entity:` namespace.",
+                "description": "Entity tags to match: every key must match, and any of a key\u0027s values matches it. Keys and values match in any case. An unprefixed key is put in the `entity:` namespace.",
                 "type": "string"
               },
               "type": "array"
             },
-            "description": "Entity tags to match: every key must match, and any of a key\u0027s values matches it. An unprefixed key is put in the `entity:` namespace.",
+            "description": "Entity tags to match: every key must match, and any of a key\u0027s values matches it. Keys and values match in any case. An unprefixed key is put in the `entity:` namespace.",
             "type": "object"
           },
           "fingerprint": {
@@ -17469,15 +17469,15 @@
             "type": "string"
           },
           "query": {
-            "description": "Full-text search over titles, descriptions and comments.",
+            "description": "Words to search the whole issue for, comments included, split and stemmed as the issue is, so checkout-api is also checkout and api: an issue matches when it has any one of them, and those with the most, above all in their title, fingerprint and entities, come first.",
             "maxLength": 500,
             "minLength": 0,
             "type": "string"
           },
           "states": {
-            "description": "Only issues in these states. Absent: open issues plus those closed within `closedWithinDays`.",
+            "description": "Only issues in these states. Absent: open issues plus those closed within `closedWithinDays`, and, when that is absent too, those closed as IGNORED or NOT_A_PROBLEM at any age.",
             "items": {
-              "description": "Only issues in these states. Absent: open issues plus those closed within `closedWithinDays`.",
+              "description": "Only issues in these states. Absent: open issues plus those closed within `closedWithinDays`, and, when that is absent too, those closed as IGNORED or NOT_A_PROBLEM at any age.",
               "enum": [
                 "TRIAGE",
                 "READY",
@@ -18965,7 +18965,7 @@
             "type": "string"
           },
           "issueId": {
-            "description": "When set, hands the agent this issue (its TSID): the run\u0027s subject, which its known issues hold alone and whose history records the handoff. Only a person may hand off an issue, and a handoff can\u0027t be a continuation. `null` for a plain run.",
+            "description": "When set, hands the agent this issue (its TSID): the run\u0027s subject, which its first message holds and whose history records the handoff. Only a person may hand off an issue, and a handoff can\u0027t be a continuation. `null` for a plain run.",
             "type": "string"
           },
           "next": {
