@@ -3222,6 +3222,70 @@
           "Job Actions"
         ]
       },
+      "BackfillProgress": {
+        "description": "What a logs backfill is doing, and how far it is.",
+        "properties": {
+          "bytesScanned": {
+            "description": "The bytes the backfill\u0027s current query has scanned.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "eventsDelivered": {
+            "additionalProperties": {
+              "description": "The events each vendor confirmed receiving, by vendor integration id.",
+              "format": "int64",
+              "type": "integer"
+            },
+            "default": {},
+            "description": "The events each vendor confirmed receiving, by vendor integration id.",
+            "type": "object"
+          },
+          "eventsRead": {
+            "description": "The events read so far.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "eventsTotal": {
+            "description": "The events selected to send, once they are. A vendor can receive fewer, since events it already has are skipped.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "failureReason": {
+            "description": "Why the backfill failed, when it did.",
+            "type": "string"
+          },
+          "phase": {
+            "description": "What the backfill is doing.",
+            "enum": [
+              "PENDING",
+              "WAITING",
+              "STARTING",
+              "FINDING_CUTOFF",
+              "EXPORTING",
+              "SENDING",
+              "NOTHING_TO_SEND",
+              "FINISHED",
+              "FAILED",
+              "CANCELLED",
+              "DELETED"
+            ],
+            "type": "string"
+          },
+          "selectingMillis": {
+            "description": "How long the backfill\u0027s current query has queued and run.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "waitingReason": {
+            "description": "Why the backfill is waiting, when it is.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase"
+        ],
+        "type": "object"
+      },
       "BatchCancelInvestigationsRequest": {
         "properties": {
           "investigationIds": {
@@ -3674,6 +3738,10 @@
             "description": "The name of the S3 bucket to use for the data warehouse",
             "type": "string"
           },
+          "orgName": {
+            "description": "The organization\u0027s name, which names its folder under the bucket\u0027s query-results prefix. The stack expires that folder\u0027s query results after a day.",
+            "type": "string"
+          },
           "region": {
             "description": "The AWS region the bucket must be created in. Matches the region the Grepr deployment is running in.",
             "type": "string"
@@ -3690,6 +3758,7 @@
         "required": [
           "awsAccountId",
           "bucketName",
+          "orgName",
           "region",
           "roleName",
           "stackName"
@@ -4556,9 +4625,9 @@
           },
           "vendorSinkIntegrationIds": {
             "default": [],
-            "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
+            "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips: exactly the integrations the sinks send to, or empty. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
             "items": {
-              "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
+              "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips: exactly the integrations the sinks send to, or empty. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
               "pattern": "[a-z0-9]{1,13}",
               "type": "string"
             },
@@ -10740,9 +10809,9 @@
           },
           "vendorSinkIntegrationIds": {
             "default": [],
-            "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join.",
+            "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips: exactly the integrations the sinks send to, or empty when the source does no per-vendor dedup join.",
             "items": {
-              "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips. Empty when the source does no per-vendor dedup join.",
+              "description": "Vendor integration IDs, if any, whose prior delivery the backfill source skips: exactly the integrations the sinks send to, or empty when the source does no per-vendor dedup join.",
               "pattern": "^[0-9a-z]{1,13}$",
               "type": "string"
             },
@@ -36028,6 +36097,19 @@
               "type": "array",
               "uniqueItems": true
             }
+          },
+          {
+            "description": "Optional filter to fetch only jobs carrying every given tag, each as key:value",
+            "example": "type:backfill",
+            "in": "query",
+            "name": "tag",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
           }
         ],
         "responses": {
@@ -36454,6 +36536,54 @@
             "grepr-oidc": []
           }
         ],
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/v1/jobs/{id}/progress": {
+      "get": {
+        "description": "Gets what a logs backfill is doing: waiting, selecting its events with Athena, or sending them, with how many it has read and each vendor has received. Read live while the backfill runs; the final counts once it ends.",
+        "operationId": "getBackfillProgress",
+        "parameters": [
+          {
+            "description": "Id of the backfill",
+            "example": "0ABC12DEF4G",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackfillProgress"
+                }
+              }
+            },
+            "description": "Progress retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No logs backfill has this id."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get a backfill\u0027s progress",
         "tags": [
           "Jobs"
         ]
