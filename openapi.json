@@ -4099,13 +4099,13 @@
         "type": "object"
       },
       "ConditionNode": {
-        "description": "Non-terminal — events matching `predicate` route into `thenAction`; non-matching events route into `elseAction`. `lateDataDuration` is honored only when this node is the root of a stage\u0027s slot.",
+        "description": "Non-terminal — events matching `predicate` route into `thenAction`; non-matching events route into `elseAction`. `lateDataDuration`, on any ConditionNode, applies to the events reaching it.",
         "properties": {
           "elseAction": {
             "$ref": "#/components/schemas/ChainNode"
           },
           "lateDataDuration": {
-            "description": "Optional ISO-8601 maximum allowed lateness applied at the chain\u0027s entry filter. Honored only when this is the root node of a stage\u0027s slot; values set on a nested ConditionNode are ignored by the templates-layer compiler.",
+            "description": "Optional ISO-8601 maximum allowed lateness, applied to the events reaching this node before its predicate. Honored on any ConditionNode, a slot\u0027s root or a nested one.",
             "example": "PT20.345S",
             "format": "ISO-8601",
             "type": "string"
@@ -10520,13 +10520,8 @@
             },
             "type": "array"
           },
-          "confirmedDeliveryEnabled": {
-            "default": false,
-            "description": "When true (ENGT-3898), vendor log sinks are non-terminal: delivered records are written to a confirmed-delivery dedup sink so only logs actually accepted by the vendor are marked sent. Defaults to false during gradual rollout.",
-            "type": "boolean"
-          },
           "datasetId": {
-            "description": "The unique identifier for the dataset. When absent, no raw logs will be stored. At least one of `datasetId` or `sinks` must be provided for non-draft pipelines.",
+            "description": "The unique identifier for the dataset. When absent, no raw logs will be stored. At least one of `datasetId`, `sinks` or `processedLogsSink` must be provided, in drafts too.",
             "pattern": "^[0-9a-z]{13}$",
             "type": "string"
           },
@@ -10566,7 +10561,7 @@
             "$ref": "#/components/schemas/LogsEventSampler"
           },
           "sinks": {
-            "description": "A list of template log sinks, each specific to a vendor with optional filter configuration. When absent, reduced logs will not be forwarded. At least one of `sinks` or `datasetId` must be provided for non-draft pipelines.",
+            "description": "A list of template log sinks, each specific to a vendor with optional filter configuration. When absent, reduced logs will not be forwarded. At least one of `datasetId`, `sinks` or `processedLogsSink` must be provided, in drafts too. A SQL output routed to `sinks` needs a sink here or `processedLogsSink`, and a metric SQL output needs a Datadog log sink here.",
             "items": {
               "$ref": "#/components/schemas/TemplateLogSink"
             },
@@ -14948,10 +14943,6 @@
       "RawLogsSinkConfig": {
         "description": "Optional configuration overrides for the raw logs iceberg table sink.",
         "properties": {
-          "datasetId": {
-            "description": "Override the dataset ID for the raw logs sink.",
-            "type": "string"
-          },
           "enableDynamicPartitioning": {
             "description": "Flag to enable dynamic partitioning for log tables.",
             "type": "boolean"
@@ -20541,17 +20532,15 @@
             "type": "array"
           },
           "traceSamplerTagKey": {
-            "default": "grepr.tracesampler",
-            "description": "The key for the tag added to events of sampled traces to signal downstream operations differentiated processing.",
-            "example": "tracesampler",
-            "title": "Sampled Trace Marker Tag Key",
+            "deprecated": true,
+            "description": "Deprecated and ignored: the template tags events of sampled traces grepr.skipaggregation: trace-sampled, so the reducer passes them unaggregated.",
+            "title": "Sampled Trace Marker Tag Key (Deprecated)",
             "type": "string"
           },
           "traceSamplerTagValue": {
-            "default": "sampled",
-            "description": "The value for the tag added to events of sampled traces to signal downstream operations differentiated processing.",
-            "example": "sampled",
-            "title": "Sampled Trace Marker Tag Value",
+            "deprecated": true,
+            "description": "Deprecated and ignored: the template tags events of sampled traces grepr.skipaggregation: trace-sampled, so the reducer passes them unaggregated.",
+            "title": "Sampled Trace Marker Tag Value (Deprecated)",
             "type": "string"
           },
           "type": {
