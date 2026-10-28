@@ -34902,6 +34902,70 @@
       }
     },
     "/v1/issues/{idOrNumber}": {
+      "delete": {
+        "description": "Deletes an issue with its comments, history, assignees and sightings. People only. It can\u0027t be undone, and the issue\u0027s number isn\u0027t reused. An issue that others are closed as duplicates of can\u0027t be deleted until they\u0027re reopened or closed another way; the refusal names the ones the caller can see. Links to it from other issues read as hidden.",
+        "operationId": "delete_14",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "idOrNumber",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            },
+            "description": "Issue deleted; the body is the issue as it was"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Not a person, or no permission to edit the issue"
+          },
+          "404": {
+            "description": "Issue not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueErrorResponse"
+                }
+              }
+            },
+            "description": "Other issues are closed as duplicates of it"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Delete an issue",
+        "tags": [
+          "Issues"
+        ]
+      },
       "get": {
         "description": "Returns an issue with its assignees, its newest guidance comments, and its latest comments and history entries; the comments route pages every comment. Plain sightings are left out of that history; the issue\u0027s occurrence counts summarize them, and the history route pages them.",
         "operationId": "get_16",
