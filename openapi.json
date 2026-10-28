@@ -14992,6 +14992,7 @@
                 "MULTI_GROK_PARSER",
                 "AUTH0_SSO_CONNECTION",
                 "TRINO_QUERY_ENGINE",
+                "CHAT_TOOL_DETAILS",
                 "UNKNOWN"
               ],
               "type": "string"
