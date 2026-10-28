@@ -2074,6 +2074,7 @@
             "description": "What the argument accepts.",
             "enum": [
               "ANY",
+              "VARIANT",
               "NUMBER",
               "TEXT",
               "BOOLEAN",
@@ -2081,7 +2082,8 @@
               "ARRAY",
               "MAP",
               "TYPE_NAME",
-              "TIME_UNIT"
+              "TIME_UNIT",
+              "LITERAL"
             ],
             "type": "string"
           }
