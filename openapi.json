@@ -14219,6 +14219,9 @@
       },
       "PendingApproval": {
         "properties": {
+          "approvalNonce": {
+            "type": "string"
+          },
           "command": {
             "type": "string"
           },
@@ -14259,12 +14262,16 @@
       },
       "PermissionReplyRequest": {
         "properties": {
+          "approvalNonce": {
+            "type": "string"
+          },
           "reply": {
             "pattern": "once|always|reject",
             "type": "string"
           }
         },
         "required": [
+          "approvalNonce",
           "reply"
         ],
         "type": "object"
