@@ -3091,14 +3091,6 @@
         ],
         "type": "object"
       },
-      "AutoApproveRequest": {
-        "properties": {
-          "autoApprove": {
-            "type": "boolean"
-          }
-        },
-        "type": "object"
-      },
       "AvailablePermission": {
         "properties": {
           "action": {
@@ -3611,6 +3603,27 @@
         },
         "type": "object"
       },
+      "ChatActionCategory": {
+        "enum": [
+          "CHANGE_PIPELINES",
+          "RUN_BACKFILLS",
+          "CHANGE_DATASETS",
+          "CHANGE_ISSUES",
+          "ACT_IN_CONNECTED_TOOLS"
+        ],
+        "type": "string"
+      },
+      "ChatActionGrants": {
+        "properties": {
+          "grantedActionCategories": {
+            "items": {
+              "$ref": "#/components/schemas/ChatActionCategory"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "ChatList": {
         "properties": {
           "chats": {
@@ -3638,9 +3651,6 @@
       },
       "ChatStatusResponse": {
         "properties": {
-          "autoApprove": {
-            "type": "boolean"
-          },
           "model": {
             "$ref": "#/components/schemas/ModelConfiguration"
           },
@@ -4323,9 +4333,6 @@
       },
       "CreateChatRequest": {
         "properties": {
-          "autoApprove": {
-            "type": "boolean"
-          },
           "enabledSkills": {
             "items": {
               "type": "string"
@@ -14222,7 +14229,13 @@
           "approvalNonce": {
             "type": "string"
           },
-          "command": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/ChatActionCategory"
+            },
+            "type": "array"
+          },
+          "description": {
             "type": "string"
           },
           "permissionId": {
@@ -14266,7 +14279,7 @@
             "type": "string"
           },
           "reply": {
-            "pattern": "once|always|reject",
+            "pattern": "once|reject",
             "type": "string"
           }
         },
@@ -26100,6 +26113,85 @@
         ]
       }
     },
+    "/v1/chat-preferences/action-categories": {
+      "get": {
+        "description": "Returns the kinds of change the caller\u0027s chats make without asking. A chat asks about every other change before making it, and never asks about reads.",
+        "operationId": "getActionGrants",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatActionGrants"
+                }
+              }
+            },
+            "description": "Grants retrieved"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Get the caller\u0027s chat action grants",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
+    "/v1/chat-preferences/action-categories/{category}": {
+      "delete": {
+        "description": "Makes the caller\u0027s chats ask before this kind of change again. Revoking a category not granted changes nothing.",
+        "operationId": "revokeActionCategory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ChatActionCategory"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Category revoked"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Revoke a chat action category",
+        "tags": [
+          "Chats"
+        ]
+      },
+      "put": {
+        "description": "Lets the caller\u0027s chats make this kind of change without asking, from their next one on. Granting a category already granted changes nothing.",
+        "operationId": "grantActionCategory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ChatActionCategory"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Category granted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Grant a chat action category",
+        "tags": [
+          "Chats"
+        ]
+      }
+    },
     "/v1/chats": {
       "get": {
         "description": "Returns one page of the authenticated user\u0027s chats within their org, most-recently-updated first. Metadata only (id, title, timestamps); turn content is read per-chat. Page backwards with the response\u0027s nextCursor.",
@@ -26327,54 +26419,6 @@
         ]
       }
     },
-    "/v1/chats/{chatId}/auto-approve": {
-      "put": {
-        "description": "Turns auto-approval on or off for the chat. While on, gated actions run without prompting, and a turn already parked on an approval is released. The setting is persisted and survives a restart of the chat. Returns 202 immediately.",
-        "operationId": "setAutoApprove",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "chatId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AutoApproveRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Auto-approval mode updated"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Chat not found"
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Switch a chat\u0027s auto-approval mode",
-        "tags": [
-          "Chats"
-        ]
-      }
-    },
     "/v1/chats/{chatId}/cancel": {
       "post": {
         "description": "Signals the chat\u0027s workflow to abort the current turn and finish as CANCELLED.",
@@ -26419,7 +26463,7 @@
     },
     "/v1/chats/{chatId}/permissions/{permissionId}": {
       "post": {
-        "description": "Signals the chat\u0027s workflow with the user\u0027s approve/reject decision for the gated action it is waiting on, resuming the turn. Returns 202 immediately.",
+        "description": "Signals the chat\u0027s workflow with the user\u0027s decision on the write it is waiting on, resuming the turn. Returns 202 immediately. To stop being asked about such writes, grant their categories under /v1/chat-preferences/action-categories.",
         "operationId": "respondToPermission",
         "parameters": [
           {
