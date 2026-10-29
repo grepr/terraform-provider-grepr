@@ -20362,7 +20362,7 @@
             "type": "object"
           },
           "templateVersion": {
-            "description": "The version of the template to use for this operation. Note that whether templates are forward- or backward-compatible are dependent on the template script, so updating or downgrading versions may result in an error in the job depending on the script.",
+            "description": "The template\u0027s version. Required for a template your organization owns. Built-in templates ignore it and run the version that ships with the pipeline\u0027s Grepr version.",
             "example": 4,
             "format": "int32",
             "type": "integer"
@@ -20378,7 +20378,6 @@
         "required": [
           "name",
           "templateId",
-          "templateVersion",
           "type"
         ],
         "type": "object",
