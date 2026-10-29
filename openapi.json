@@ -3169,7 +3169,7 @@
           },
           "limit": {
             "default": 500000,
-            "description": "Maximum number of logs to backfill. Default and max is 500,000.",
+            "description": "Maximum number of logs to backfill. Default and max is 500,000. -1 backfills every matching log and 0 backfills none.",
             "example": 100000,
             "format": "int32",
             "maximum": 500000,
@@ -20245,6 +20245,13 @@
             "example": "PT2H",
             "type": "string"
           },
+          "backfillLimit": {
+            "description": "Maximum number of logs each backfill this exception starts may replay, at most 500,000. -1 replays every matching log and 0 replays none. When unset, the backfill uses the default.",
+            "example": 100000,
+            "format": "int32",
+            "maximum": 500000,
+            "type": "integer"
+          },
           "id": {
             "description": "Unique identifier for this exception",
             "type": "string"
@@ -20392,6 +20399,13 @@
             "description": "Time period for backfilling data",
             "example": "PT2H",
             "type": "string"
+          },
+          "backfillLimit": {
+            "description": "Maximum number of logs each backfill this exception starts may replay, at most 500,000. -1 replays every matching log and 0 replays none. When unset, the backfill uses the default.",
+            "example": 100000,
+            "format": "int32",
+            "maximum": 500000,
+            "type": "integer"
           },
           "id": {
             "description": "Unique identifier for this exception",
