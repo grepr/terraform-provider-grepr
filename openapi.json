@@ -9084,6 +9084,18 @@
         },
         "type": "object"
       },
+      "ItemsCollectionReadJiraMcp": {
+        "properties": {
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReadJiraMcp"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "ItemsCollectionReadJob": {
         "properties": {
           "items": {
@@ -9287,6 +9299,40 @@
           }
         },
         "type": "object"
+      },
+      "JiraMcp": {
+        "description": "The payload containing integration data.",
+        "properties": {
+          "apiKey": {
+            "description": "Masked API key for the MCP server.",
+            "readOnly": true,
+            "type": "string"
+          },
+          "serverUrl": {
+            "description": "MCP server endpoint URL.",
+            "example": "https://mcp.notion.so/v1",
+            "type": "string"
+          },
+          "siteUrl": {
+            "description": "Web URL of the Jira Cloud site, used to link to issues the agent writes (e.g. https://acme.atlassian.net).",
+            "example": "https://acme.atlassian.net",
+            "type": "string"
+          },
+          "validateKeysOnSave": {
+            "default": true,
+            "description": "Indicates whether to validate the API key when saving.",
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "serverUrl",
+          "siteUrl"
+        ],
+        "type": "object",
+        "x-type": {
+          "type": "jira-mcp"
+        }
       },
       "JobAction": {
         "description": "Base class of all Job Actions",
@@ -12557,7 +12603,8 @@
             "enum": [
               "ANTHROPIC",
               "GEMINI",
-              "LITELLM"
+              "LITELLM",
+              "OPENAI"
             ],
             "type": "string"
           }
@@ -12933,6 +12980,21 @@
             "example": "**************ey",
             "readOnly": true,
             "type": "string"
+          },
+          "integrationMaxTokens": {
+            "description": "Total tokens all agents using this integration may consume per max-tokens window. Null uses the default of 200,000,000.",
+            "example": 200000000,
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxTokensWindowHours": {
+            "description": "Length in hours of the UTC-aligned max tokens window; must be a divisor of 24. Null uses the default of 1.",
+            "example": 24,
+            "format": "int32",
+            "maximum": 24,
+            "minimum": 1,
+            "type": "integer"
           },
           "supportsEmbedding": {
             "description": "Whether this provider offers an embeddings API and can back agent investigation memory.",
@@ -15613,6 +15675,83 @@
             "uniqueItems": true
           }
         },
+        "type": "object"
+      },
+      "ReadJiraMcp": {
+        "properties": {
+          "createdAt": {
+            "description": "Timestamp when the integration was created.",
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "id": {
+            "description": "The integration id",
+            "type": "string"
+          },
+          "jobIds": {
+            "description": "List of job IDs associated with the integration.",
+            "items": {
+              "description": "List of job IDs associated with the integration.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "name": {
+            "description": "Name of the integration.",
+            "example": "my_integration",
+            "pattern": "[a-zA-Z0-9 _-]{1,128}",
+            "type": "string"
+          },
+          "organizationId": {
+            "description": "Organization ID of the integration.",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/JiraMcp"
+          },
+          "teamIds": {
+            "description": "The team IDs that this integration is associated with.",
+            "items": {
+              "description": "The team IDs that this integration is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "description": "The type of the integration. This is used to determine the payload type.",
+            "enum": [
+              "jira-mcp"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Timestamp when the integration was last updated.",
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "version": {
+            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+            "example": 0,
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "jobIds",
+          "name",
+          "organizationId",
+          "payload",
+          "type",
+          "updatedAt",
+          "version"
+        ],
         "type": "object"
       },
       "ReadJob": {
@@ -23365,6 +23504,50 @@
         ],
         "type": "object"
       },
+      "WriteJiraMcp": {
+        "properties": {
+          "name": {
+            "description": "Name of the integration.",
+            "example": "my_integration",
+            "pattern": "[a-zA-Z0-9 _-]{1,128}",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/JiraMcp"
+          },
+          "teamIds": {
+            "default": [],
+            "description": "The team IDs that this integration is associated with.",
+            "items": {
+              "description": "The team IDs that this integration is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "description": "The type of the integration. This is used to determine the payload type.",
+            "enum": [
+              "jira-mcp"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "description": "Version of the integration. Should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+            "example": 0,
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "payload",
+          "type",
+          "version"
+        ],
+        "type": "object"
+      },
       "WriteLiteLlm": {
         "properties": {
           "name": {
@@ -29935,6 +30118,276 @@
         ]
       }
     },
+    "/v1/integrations/jira-mcp": {
+      "get": {
+        "description": "Get all Jira MCP server integrations for your organization. This will contain masked credentials if present.",
+        "operationId": "list_11",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsCollectionReadJiraMcp"
+                }
+              }
+            },
+            "description": "Integrations retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "List all Jira MCP integrations",
+        "tags": [
+          "Jira MCP Integration"
+        ]
+      },
+      "post": {
+        "description": "Creates an integration to connect to a Jira MCP server.",
+        "operationId": "create_9",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteJiraMcp"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadJiraMcp"
+                }
+              }
+            },
+            "description": "Integration created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadJiraMcp"
+                }
+              }
+            },
+            "description": "Integration already exists."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Create a Jira MCP integration",
+        "tags": [
+          "Jira MCP Integration"
+        ]
+      }
+    },
+    "/v1/integrations/jira-mcp/{id}": {
+      "delete": {
+        "description": "Deletes a Jira MCP integration. This will delete the associated credential as well. No-op if already deleted.",
+        "operationId": "delete_9",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Integration deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Delete a Jira MCP integration",
+        "tags": [
+          "Jira MCP Integration"
+        ]
+      },
+      "get": {
+        "description": "Get a Jira MCP integration by ID.",
+        "operationId": "get_11",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadJiraMcp"
+                }
+              }
+            },
+            "description": "Integration retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get a Jira MCP integration",
+        "tags": [
+          "Jira MCP Integration"
+        ]
+      },
+      "put": {
+        "description": "Updates a Jira MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
+        "operationId": "update_7",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteJiraMcp"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadJiraMcp"
+                }
+              }
+            },
+            "description": "Integration updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          },
+          "409": {
+            "description": "Integration was modified or deleted concurrently."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Update a Jira MCP integration.",
+        "tags": [
+          "Jira MCP Integration"
+        ]
+      }
+    },
+    "/v1/integrations/jira-mcp/{id}/api-key": {
+      "put": {
+        "description": "Creates the Atlassian service account API token for a Jira MCP integration if it doesn\u0027t exist and updates it otherwise. Unless validateKeysOnSave is false, the credential is checked against the Atlassian MCP server first and is not stored if Atlassian refuses it or it gives no Jira tools.",
+        "operationId": "upsertApiKey_5",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecretApi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Credential upserted successfully."
+          },
+          "400": {
+            "description": "Atlassian refused the credential, could not be reached, or gave no Jira tools."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Integration not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Creates or updates a Jira MCP integration credential",
+        "tags": [
+          "Jira MCP Integration"
+        ]
+      }
+    },
     "/v1/integrations/litellm": {
       "get": {
         "operationId": "list_8",
@@ -30713,7 +31166,7 @@
     "/v1/integrations/openai": {
       "get": {
         "description": "Get all OpenAI integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_13",
+        "operationId": "list_14",
         "responses": {
           "200": {
             "content": {
@@ -30744,7 +31197,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to OpenAI.",
-        "operationId": "create_11",
+        "operationId": "create_12",
         "requestBody": {
           "content": {
             "application/json": {
@@ -30796,7 +31249,7 @@
     "/v1/integrations/openai/{id}": {
       "delete": {
         "description": "Deletes an OpenAI integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_11",
+        "operationId": "delete_12",
         "parameters": [
           {
             "in": "path",
@@ -30830,7 +31283,7 @@
       },
       "get": {
         "description": "Get an OpenAI integration by ID.",
-        "operationId": "get_13",
+        "operationId": "get_14",
         "parameters": [
           {
             "in": "path",
@@ -30874,7 +31327,7 @@
       },
       "put": {
         "description": "Updates an OpenAI integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_9",
+        "operationId": "update_10",
         "parameters": [
           {
             "in": "path",
@@ -30932,7 +31385,7 @@
     "/v1/integrations/openai/{id}/api-key": {
       "put": {
         "description": "Creates an API key for an OpenAI integration if it doesn\u0027t exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_7",
+        "operationId": "upsertApiKey_8",
         "parameters": [
           {
             "in": "path",
@@ -30972,6 +31425,44 @@
           }
         ],
         "summary": "Creates or updates an OpenAI integration API key",
+        "tags": [
+          "OpenAI Integration"
+        ]
+      }
+    },
+    "/v1/integrations/openai/{id}/models": {
+      "get": {
+        "operationId": "models_3",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsCollectionString"
+                }
+              }
+            },
+            "description": "default response"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
         "tags": [
           "OpenAI Integration"
         ]
@@ -31350,7 +31841,7 @@
     "/v1/integrations/pagerduty-mcp": {
       "get": {
         "description": "Get all PagerDuty MCP server integrations for your organization. This will contain masked API keys if present.",
-        "operationId": "list_11",
+        "operationId": "list_12",
         "responses": {
           "200": {
             "content": {
@@ -31381,7 +31872,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a PagerDuty MCP server.",
-        "operationId": "create_9",
+        "operationId": "create_10",
         "requestBody": {
           "content": {
             "application/json": {
@@ -31433,7 +31924,7 @@
     "/v1/integrations/pagerduty-mcp/{id}": {
       "delete": {
         "description": "Deletes a PagerDuty MCP integration. This will delete the associated API key as well. No-op if already deleted.",
-        "operationId": "delete_9",
+        "operationId": "delete_10",
         "parameters": [
           {
             "in": "path",
@@ -31467,7 +31958,7 @@
       },
       "get": {
         "description": "Get a PagerDuty MCP integration by ID.",
-        "operationId": "get_11",
+        "operationId": "get_12",
         "parameters": [
           {
             "in": "path",
@@ -31511,7 +32002,7 @@
       },
       "put": {
         "description": "Updates a PagerDuty MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_7",
+        "operationId": "update_8",
         "parameters": [
           {
             "in": "path",
@@ -31569,7 +32060,7 @@
     "/v1/integrations/pagerduty-mcp/{id}/api-key": {
       "put": {
         "description": "Creates an API key for a PagerDuty MCP integration if it doesn\u0027t exist and updates it otherwise. If the key is updated while the integration is being used by a pipeline, the new key will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_5",
+        "operationId": "upsertApiKey_6",
         "parameters": [
           {
             "in": "path",
@@ -31964,7 +32455,7 @@
     "/v1/integrations/s3-vector-index": {
       "get": {
         "description": "Retrieves all S3 Vector Index integrations for the organization.",
-        "operationId": "list_14",
+        "operationId": "list_15",
         "responses": {
           "200": {
             "content": {
@@ -31995,7 +32486,7 @@
       },
       "post": {
         "description": "Creates a new S3 Vector Index integration and provisions the index in the grepr-managed S3 vector bucket.",
-        "operationId": "create_12",
+        "operationId": "create_13",
         "requestBody": {
           "content": {
             "application/json": {
@@ -32040,7 +32531,7 @@
     "/v1/integrations/s3-vector-index/{id}": {
       "delete": {
         "description": "Deletes an S3 Vector Index integration and removes the index from the S3 vector bucket. No-op if integration doesn\u0027t exist.",
-        "operationId": "delete_12",
+        "operationId": "delete_13",
         "parameters": [
           {
             "in": "path",
@@ -32074,7 +32565,7 @@
       },
       "get": {
         "description": "Retrieves an S3 Vector Index integration.",
-        "operationId": "get_14",
+        "operationId": "get_15",
         "parameters": [
           {
             "in": "path",
@@ -32118,7 +32609,7 @@
       },
       "put": {
         "description": "Updates an existing S3 Vector Index integration. Note: dimensions and distanceMetric are immutable after creation.",
-        "operationId": "update_10",
+        "operationId": "update_11",
         "parameters": [
           {
             "in": "path",
@@ -32173,7 +32664,7 @@
     "/v1/integrations/slack-mcp": {
       "get": {
         "description": "Get all Slack MCP server integrations for your organization. This will contain masked tokens if present.",
-        "operationId": "list_12",
+        "operationId": "list_13",
         "responses": {
           "200": {
             "content": {
@@ -32204,7 +32695,7 @@
       },
       "post": {
         "description": "Creates an integration to connect to a Slack MCP server.",
-        "operationId": "create_10",
+        "operationId": "create_11",
         "requestBody": {
           "content": {
             "application/json": {
@@ -32256,7 +32747,7 @@
     "/v1/integrations/slack-mcp/{id}": {
       "delete": {
         "description": "Deletes a Slack MCP integration. This will delete the associated token as well. No-op if already deleted.",
-        "operationId": "delete_10",
+        "operationId": "delete_11",
         "parameters": [
           {
             "in": "path",
@@ -32290,7 +32781,7 @@
       },
       "get": {
         "description": "Get a Slack MCP integration by ID.",
-        "operationId": "get_12",
+        "operationId": "get_13",
         "parameters": [
           {
             "in": "path",
@@ -32334,7 +32825,7 @@
       },
       "put": {
         "description": "Updates a Slack MCP integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_8",
+        "operationId": "update_9",
         "parameters": [
           {
             "in": "path",
@@ -32392,7 +32883,7 @@
     "/v1/integrations/slack-mcp/{id}/api-key": {
       "put": {
         "description": "Creates a token for a Slack MCP integration if it doesn\u0027t exist and updates it otherwise. If the token is updated while the integration is being used by a pipeline, the new token will be picked at pipeline restart, rescaling or an update.",
-        "operationId": "upsertApiKey_6",
+        "operationId": "upsertApiKey_7",
         "parameters": [
           {
             "in": "path",
@@ -33114,7 +33605,7 @@
     "/v1/integrations/webhooks": {
       "get": {
         "description": "Get all webhook integrations for your organization, optionally filtered to integrations that target the given agent.",
-        "operationId": "list_15",
+        "operationId": "list_16",
         "parameters": [
           {
             "description": "Only return integrations targeting this agent.",
@@ -33155,7 +33646,7 @@
       },
       "post": {
         "description": "Creates a webhook integration. Senders POST events to /v1/integrations/webhooks/{id}/events and authenticate with a Grepr API key (GREPR-API-KEY header).",
-        "operationId": "create_13",
+        "operationId": "create_14",
         "requestBody": {
           "content": {
             "application/json": {
@@ -33200,7 +33691,7 @@
     "/v1/integrations/webhooks/{id}": {
       "delete": {
         "description": "Deletes a webhook integration. No-op if already deleted.",
-        "operationId": "delete_13",
+        "operationId": "delete_14",
         "parameters": [
           {
             "in": "path",
@@ -33234,7 +33725,7 @@
       },
       "get": {
         "description": "Get a webhook integration by ID.",
-        "operationId": "get_15",
+        "operationId": "get_16",
         "parameters": [
           {
             "in": "path",
@@ -33278,7 +33769,7 @@
       },
       "put": {
         "description": "Updates a webhook integration. The version should be increased by one for every new update in order for the write to succeed. Otherwise, a \u0027409 Conflict\u0027 will be returned.",
-        "operationId": "update_11",
+        "operationId": "update_12",
         "parameters": [
           {
             "in": "path",
@@ -34760,7 +35251,7 @@
     "/v1/issues": {
       "post": {
         "description": "Files a new issue on the organization\u0027s board. Search first and update an existing issue instead of filing a duplicate; this call never matches existing issues.",
-        "operationId": "create_14",
+        "operationId": "create_15",
         "requestBody": {
           "content": {
             "application/json": {
@@ -34962,7 +35453,7 @@
     "/v1/issues/{idOrNumber}": {
       "delete": {
         "description": "Deletes an issue with its comments, history, assignees and sightings. People only. It can\u0027t be undone, and the issue\u0027s number isn\u0027t reused. An issue that others are closed as duplicates of can\u0027t be deleted until they\u0027re reopened or closed another way; the refusal names the ones the caller can see. Links to it from other issues read as hidden.",
-        "operationId": "delete_14",
+        "operationId": "delete_15",
         "parameters": [
           {
             "in": "path",
@@ -35026,7 +35517,7 @@
       },
       "get": {
         "description": "Returns an issue with its assignees, its newest guidance comments, and its latest comments and history entries; the comments route pages every comment. Plain sightings are left out of that history; the issue\u0027s occurrence counts summarize them, and the history route pages them.",
-        "operationId": "get_16",
+        "operationId": "get_17",
         "parameters": [
           {
             "in": "path",
@@ -35070,7 +35561,7 @@
       },
       "patch": {
         "description": "Changes the given fields and leaves the rest. A person\u0027s change to priority, entities or teams locks that field against agents. A stale version is rejected with the current issue, so the caller can reapply its change.",
-        "operationId": "update_12",
+        "operationId": "update_13",
         "parameters": [
           {
             "in": "path",
@@ -39342,7 +39833,7 @@
     "/v1/users": {
       "get": {
         "description": "Get all users in the system.",
-        "operationId": "list_16",
+        "operationId": "list_17",
         "parameters": [
           {
             "in": "query",
