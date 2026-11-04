@@ -1717,7 +1717,7 @@
       "AgentSuggestionApplyResult": {
         "properties": {
           "appliedJobVersion": {
-            "description": "The new job version the suggestion was applied as, or absent when it was rejected by verification. Applying restarts the pipeline from a savepoint, so the new version reaches its desired state asynchronously.",
+            "description": "The new job version the suggestion was applied as, or absent when it was rejected by verification. A signal mask or drop rule change applies live without a restart; any other change may restart the pipeline from a savepoint, so the new version reaches its desired state asynchronously.",
             "format": "int64",
             "type": "integer"
           },
@@ -3583,6 +3583,7 @@
               "HELPER_RULE_DELETED",
               "RESOLUTION_FAILED",
               "DISALLOWED_INPUT_CHANGE",
+              "INVALID_SIGNAL_CONFIG",
               "UNVERIFIABLE_CHANGE",
               "NO_EFFECTIVE_CHANGE"
             ],
@@ -14469,6 +14470,14 @@
             },
             "type": "array"
           },
+          "message": {
+            "description": "With rejectedSuggestionId: what was rejected, and what to do.",
+            "type": "string"
+          },
+          "rejectedSuggestionId": {
+            "description": "Not an error: this agent\u0027s signal change proposes again an entry of the signal change a person rejected as this suggestion, so nothing was recorded or applied.",
+            "type": "string"
+          },
           "suggestionId": {
             "description": "The agent suggestion the change was recorded as. The pipeline is NOT updated and will not restart, so there is nothing to wait for and the change must not be resubmitted; a human reviews and applies it from the pipeline page.",
             "type": "string"
@@ -24969,7 +24978,7 @@
     },
     "/v1/agent-suggestions/{id}/apply": {
       "post": {
-        "description": "Re-verifies the suggestion\u0027s template-inputs patch against the pipeline\u0027s current version and applies it as a new job version, marking the suggestion APPLIED. The resolution is compare-and-set on the pending status: a reviewer who loses a race to another gets 409 rather than overwriting it. Findings mean the pipeline changed since the suggestion was recorded; nothing is applied and the suggestion stays PENDING. Applying restarts the pipeline from a savepoint.",
+        "description": "Re-verifies the suggestion\u0027s template-inputs patch against the pipeline\u0027s current version and applies it as a new job version, marking the suggestion APPLIED. The resolution is compare-and-set on the pending status: a reviewer who loses a race to another gets 409 rather than overwriting it. Findings mean the pipeline changed since the suggestion was recorded; nothing is applied and the suggestion stays PENDING. A change to signal masks and drop rules only applies live, without a restart; any other change may restart the pipeline from a savepoint.",
         "operationId": "apply",
         "parameters": [
           {
