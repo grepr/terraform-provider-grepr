@@ -15146,7 +15146,6 @@
                 "DATADOG_BROWSER_LOGS_INTEGRATION",
                 "METRICS_SOURCE",
                 "S3_LOGS_FILE_SOURCE",
-                "PIPELINE_TEMPLATES",
                 "AI_WORKFLOWS",
                 "SEARCH_ICEBERG_SOURCE",
                 "MULTI_GROK_PARSER",
