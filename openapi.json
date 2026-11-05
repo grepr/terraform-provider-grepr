@@ -283,6 +283,10 @@
             ],
             "type": "string"
           },
+          "codeMode": {
+            "description": "OpenCode\u0027s experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool\u0027s schema; null or false is off.",
+            "type": "boolean"
+          },
           "concurrencyLimitPolicy": {
             "enum": [
               "QUEUE",
@@ -396,6 +400,10 @@
             ],
             "type": "string"
           },
+          "codeMode": {
+            "description": "OpenCode\u0027s experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool\u0027s schema; null or false is off.",
+            "type": "boolean"
+          },
           "concurrencyLimitPolicy": {
             "enum": [
               "QUEUE",
@@ -503,6 +511,10 @@
             ],
             "type": "string"
           },
+          "codeMode": {
+            "description": "OpenCode\u0027s experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool\u0027s schema; null or false is off.",
+            "type": "boolean"
+          },
           "concurrencyLimitPolicy": {
             "enum": [
               "QUEUE",
@@ -602,6 +614,28 @@
           "systemPrompt",
           "worksOnIssues"
         ],
+        "type": "object"
+      },
+      "AgentContextEstimate": {
+        "description": "What an agent\u0027s first model request carries before the run\u0027s own message (the signal or the chat), part by part. Sizes are estimates: characters divided by 4.",
+        "properties": {
+          "contextWindowTokens": {
+            "description": "The model\u0027s context window as the sandbox sets it: OpenCode\u0027s own window for a model it knows, otherwise the configured floor.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/ContextPart"
+            },
+            "type": "array"
+          },
+          "totalTokens": {
+            "description": "The sum of the parts\u0027 tokens.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
         "type": "object"
       },
       "AgentDetail": {
@@ -4203,6 +4237,43 @@
         "required": [
           "type"
         ],
+        "type": "object"
+      },
+      "ContextPart": {
+        "description": "One part of an agent\u0027s first model request, and its estimated size.",
+        "properties": {
+          "items": {
+            "description": "The part\u0027s breakdown, such as one item per tool; empty when it has none.",
+            "items": {
+              "$ref": "#/components/schemas/ContextPart"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "description": "Where a part of an agent\u0027s first model request comes from.",
+            "enum": [
+              "BASE_PROMPT",
+              "ENVIRONMENT",
+              "AGENT_PROMPT",
+              "FRAMEWORK",
+              "SKILLS",
+              "BUILT_IN_TOOLS",
+              "GREPR_TOOLS",
+              "MCP_TOOLS",
+              "CODE_MODE_TOOLS"
+            ],
+            "type": "string"
+          },
+          "label": {
+            "description": "What the part is, for a person.",
+            "type": "string"
+          },
+          "tokens": {
+            "description": "The estimated size, in tokens: characters divided by 4, rounded up.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
         "type": "object"
       },
       "Contract": {
@@ -11557,6 +11628,11 @@
         "properties": {
           "description": {
             "type": "string"
+          },
+          "estimatedTokens": {
+            "description": "What the tool adds to each model request of an agent that may call it, in estimated tokens (characters divided by 4).",
+            "format": "int32",
+            "type": "integer"
           },
           "name": {
             "type": "string"
@@ -25148,6 +25224,52 @@
           }
         ],
         "summary": "Create an agent",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/v1/agents/context-estimate": {
+      "post": {
+        "description": "Returns the parts of an agent\u0027s first model request and their estimated sizes: the prompts, the skill list and the tools. The run\u0027s own message (the signal or the chat) comes on top. Sizes are characters divided by 4. An MCP integration whose tools cannot be listed is returned with 0 tokens.",
+        "operationId": "contextEstimate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentConfigCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentContextEstimate"
+                }
+              }
+            },
+            "description": "Estimate computed successfully"
+          },
+          "400": {
+            "description": "The configuration names no model"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Estimate an agent\u0027s starting context",
         "tags": [
           "Agents"
         ]
