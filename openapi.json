@@ -36851,6 +36851,15 @@
               "type": "array",
               "uniqueItems": true
             }
+          },
+          {
+            "description": "Whether each job carries its jobGraph. Defaults to true. When false, each job leaves out jobGraph; GET /v1/jobs/{id} returns one job\u0027s graph.",
+            "in": "query",
+            "name": "includeGraph",
+            "schema": {
+              "default": true,
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
