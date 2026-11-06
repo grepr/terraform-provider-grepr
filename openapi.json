@@ -6567,6 +6567,64 @@
           "type": "gemini"
         }
       },
+      "GeoIpParser": {
+        "properties": {
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "sources": {
+            "description": "Attributes holding the IP address, each a dotted string or an array of literal keys. They\u0027re tried in order, in a structured body first and then at the root; the first IP the database has a record for is used. Defaults to [\"network.client.ip\"].",
+            "items": {
+              "example": "network.client.ip",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "target": {
+            "description": "Attribute that receives the result map, in the same namespace as the matched source. It replaces whatever is there. A dotted string, or an array of literal keys. Defaults to \"network.client.geoip\".",
+            "example": "network.client.geoip",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "type": {
+            "description": "Looks up an IP address attribute and adds its continent, country, subdivision, city, location and time zone.",
+            "enum": [
+              "geoip-parser"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Transforms"
+        ]
+      },
       "GithubMcp": {
         "description": "The payload containing integration data.",
         "properties": {
@@ -10593,6 +10651,24 @@
           "samplingConfig": {
             "$ref": "#/components/schemas/SamplingConfig"
           },
+          "signalDropRules": {
+            "default": [],
+            "description": "Named predicates that stop matching patterns from being signalled while the rule is enabled. Removing or disabling a rule affects only variants first seen and subscribers who join afterwards: a line that keeps occurring is offered again only after it goes quiet long enough for the reducer to forget it. The reducer\u0027s own output is not affected.",
+            "items": {
+              "$ref": "#/components/schemas/SignalDropRule"
+            },
+            "title": "Signal drop rules",
+            "type": "array"
+          },
+          "signalMasks": {
+            "default": [],
+            "description": "Capture-group regexes applied only to the message the signal matcher compares. Each non-empty group span is replaced with \u003cname\u003e. The reducer\u0027s own masks and output are not affected.",
+            "items": {
+              "$ref": "#/components/schemas/SignalMask"
+            },
+            "title": "Signal masks",
+            "type": "array"
+          },
           "similarityThreshold": {
             "default": 70.0,
             "description": "Controls how close a set of tokens are to a pattern before it is considered a match. Calculated as the percent of matching tokens between a pattern and a message.",
@@ -11788,9 +11864,6 @@
             "type": "string"
           }
         },
-        "required": [
-          "significances"
-        ],
         "type": "object"
       },
       "MemorySearchResponse": {
@@ -13113,6 +13186,7 @@
             "datadog-trace-sink": "#/components/schemas/DatadogTraceSink",
             "discarding-sink": "#/components/schemas/DiscardingSink",
             "event-dedup-iceberg-table-sink": "#/components/schemas/EventDedupIcebergTableSink",
+            "geoip-parser": "#/components/schemas/GeoIpParser",
             "grepr-metrics-source": "#/components/schemas/GreprMetricsSource",
             "grepr-pipe-log-sink": "#/components/schemas/GreprPipeLogSink",
             "grepr-pipe-log-source": "#/components/schemas/GreprPipeLogSource",
@@ -13211,6 +13285,9 @@
           },
           {
             "$ref": "#/components/schemas/GrokParser"
+          },
+          {
+            "$ref": "#/components/schemas/GeoIpParser"
           },
           {
             "$ref": "#/components/schemas/JsonLogProcessor"
@@ -18072,6 +18149,57 @@
           "predicate"
         ],
         "title": "Sibling Merge Rules",
+        "type": "object"
+      },
+      "SignalDropRule": {
+        "properties": {
+          "enabled": {
+            "default": true,
+            "description": "Whether the rule is applied.",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Unique name of the rule. Template patches merge entries by name.",
+            "example": "ignore-health-checks",
+            "title": "Name",
+            "type": "string"
+          },
+          "predicate": {
+            "$ref": "#/components/schemas/EventPredicate"
+          }
+        },
+        "required": [
+          "name",
+          "predicate"
+        ],
+        "type": "object"
+      },
+      "SignalMask": {
+        "properties": {
+          "enabled": {
+            "default": true,
+            "description": "Whether the mask is applied.",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Unique name of the mask. Matched spans are replaced with \u003cname\u003e. Template patches merge entries by name.",
+            "example": "ship_addr",
+            "title": "Name",
+            "type": "string"
+          },
+          "regex": {
+            "description": "An RE2 regex (no lookarounds or backreferences) with at least one capture group; it must also compile under Hyperscan. Each non-empty group span of a match is replaced with \u003cname\u003e.",
+            "example": "Shipping to (.+?) order\u003d",
+            "title": "Regex",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "regex"
+        ],
         "type": "object"
       },
       "SignupRequest": {
@@ -35649,6 +35777,7 @@
         "operationId": "get_17",
         "parameters": [
           {
+            "description": "The issue\u0027s 13-character id, or its number, such as 142.",
             "in": "path",
             "name": "idOrNumber",
             "required": true,
@@ -35693,6 +35822,7 @@
         "operationId": "update_13",
         "parameters": [
           {
+            "description": "The issue\u0027s 13-character id, or its number, such as 142.",
             "in": "path",
             "name": "idOrNumber",
             "required": true,
@@ -35779,6 +35909,7 @@
         "operationId": "join",
         "parameters": [
           {
+            "description": "The issue\u0027s 13-character id, or its number, such as 142.",
             "in": "path",
             "name": "idOrNumber",
             "required": true,
@@ -35865,6 +35996,7 @@
         "operationId": "finishAssignment",
         "parameters": [
           {
+            "description": "The issue\u0027s 13-character id, or its number, such as 142.",
             "in": "path",
             "name": "idOrNumber",
             "required": true,
@@ -36099,6 +36231,7 @@
         "operationId": "comment",
         "parameters": [
           {
+            "description": "The issue\u0027s 13-character id, or its number, such as 142.",
             "in": "path",
             "name": "idOrNumber",
             "required": true,
@@ -36590,6 +36723,7 @@
         "operationId": "recordOccurrence",
         "parameters": [
           {
+            "description": "The issue\u0027s 13-character id, or its number, such as 142.",
             "in": "path",
             "name": "idOrNumber",
             "required": true,
@@ -36656,6 +36790,7 @@
         "operationId": "transition",
         "parameters": [
           {
+            "description": "The issue\u0027s 13-character id, or its number, such as 142.",
             "in": "path",
             "name": "idOrNumber",
             "required": true,
