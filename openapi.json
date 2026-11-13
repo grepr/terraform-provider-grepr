@@ -358,6 +358,9 @@
           "name": {
             "type": "string"
           },
+          "schedule": {
+            "$ref": "#/components/schemas/AgentSchedule"
+          },
           "serviceAccountId": {
             "type": "string"
           },
@@ -469,6 +472,9 @@
           },
           "modelConfiguration": {
             "$ref": "#/components/schemas/ModelConfiguration"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/AgentSchedule"
           },
           "serviceAccountId": {
             "type": "string"
@@ -583,6 +589,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/AgentSchedule"
           },
           "serviceAccountId": {
             "type": "string"
@@ -961,6 +970,27 @@
             "$ref": "#/components/schemas/PickupFilters"
           }
         },
+        "type": "object"
+      },
+      "AgentSchedule": {
+        "description": "An agent\u0027s schedule: a five-field cron read in an IANA timezone, and optionally the instruction the agent is given on each scheduled run; without one the run follows the agent\u0027s system prompt. Fires at least five minutes apart.",
+        "properties": {
+          "cron": {
+            "type": "string"
+          },
+          "instructions": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cron",
+          "timezone"
+        ],
         "type": "object"
       },
       "AgentSessionAnalytics": {
@@ -1907,9 +1937,12 @@
             "type": "string"
           },
           "path": {
-            "description": "Where the rule was broken, as a path into the request: \u0027select\u0027, \u0027select[1].expression\u0027, \u0027select[1].alias\u0027, \u0027groupBy[0]\u0027, \u0027window.size\u0027, \u0027window.slide\u0027, \u0027having\u0027, \u0027orderBy[2].expression\u0027, \u0027limit\u0027, \u0027scanBudgetBytes\u0027, \u0027predicate\u0027, or \u0027query\u0027 for a failure that names no single item.",
+            "description": "Where the rule was broken, as a path into the request: \u0027select\u0027, \u0027select[1].expression\u0027, \u0027select[1].alias\u0027, \u0027groupBy[0]\u0027, \u0027window.size\u0027, \u0027window.slide\u0027, \u0027having\u0027, \u0027orderBy[2].expression\u0027, \u0027sql\u0027, \u0027limit\u0027, \u0027scanBudgetBytes\u0027, \u0027predicate\u0027, or \u0027query\u0027 for a failure that names no single item.",
             "example": "select[1].alias",
             "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/AnalyticsDiagnosticRange"
           }
         },
         "required": [
@@ -1932,14 +1965,46 @@
         ],
         "type": "object"
       },
+      "AnalyticsDiagnosticRange": {
+        "description": "For a diagnostic on \u0027sql\u0027, the part of the query\u0027s text it is about, when the server can tell.",
+        "properties": {
+          "endColumn": {
+            "example": 19,
+            "format": "int32",
+            "type": "integer"
+          },
+          "endLine": {
+            "example": 3,
+            "format": "int32",
+            "type": "integer"
+          },
+          "startColumn": {
+            "example": 7,
+            "format": "int32",
+            "type": "integer"
+          },
+          "startLine": {
+            "example": 3,
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "endColumn",
+          "endLine",
+          "startColumn",
+          "startLine"
+        ],
+        "type": "object"
+      },
       "AnalyticsDraftRequest": {
         "properties": {
           "datasetId": {
-            "description": "Dataset the query reads. Supplying it checks the scan budget against that dataset\u0027s ceiling and requires VIEW permission on it.",
+            "description": "Dataset a builder query reads. Supplying it checks the scan budget against that dataset\u0027s ceiling and requires VIEW permission on it. A Grepr SQL query names its own dataset, which this must match when given.",
             "type": "string"
           },
           "query": {
-            "$ref": "#/components/schemas/StructuredAnalyticsQuery"
+            "$ref": "#/components/schemas/AnalyticsQuery"
           },
           "scanBudgetBytes": {
             "description": "Bytes the run may scan, checked against the organization\u0027s ceiling. Zero stands for a budget field left empty and is reported as a diagnostic.",
@@ -1988,10 +2053,18 @@
         "type": "object"
       },
       "AnalyticsField": {
+        "description": "A column a query reads: its name, its type and, for a struct, its fields.",
         "properties": {
           "accessorTemplate": {
             "description": "Format string for a nested key accessor, when applicable.",
             "type": "string"
+          },
+          "fields": {
+            "description": "A struct column\u0027s fields, in order, each with its own fields when it is a struct.",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsField"
+            },
+            "type": "array"
           },
           "name": {
             "type": "string"
@@ -2171,6 +2244,7 @@
         "description": "Complete analytical query to execute.",
         "discriminator": {
           "mapping": {
+            "sql-analytics-query": "#/components/schemas/SqlAnalyticsQuery",
             "structured-analytics-query": "#/components/schemas/StructuredAnalyticsQuery"
           },
           "propertyName": "type"
@@ -2178,6 +2252,9 @@
         "oneOf": [
           {
             "$ref": "#/components/schemas/StructuredAnalyticsQuery"
+          },
+          {
+            "$ref": "#/components/schemas/SqlAnalyticsQuery"
           }
         ],
         "properties": {
@@ -2190,8 +2267,80 @@
         ],
         "type": "object"
       },
+      "AnalyticsResultGrouping": {
+        "description": "The outermost SELECT\u0027s GROUP BY, by result column name.",
+        "properties": {
+          "allSelected": {
+            "description": "Whether every GROUP BY entry names a selected column.",
+            "type": "boolean"
+          },
+          "keys": {
+            "description": "The other GROUP BY keys\u0027 columns, in GROUP BY order.",
+            "items": {
+              "description": "The other GROUP BY keys\u0027 columns, in GROUP BY order.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "time": {
+            "description": "The column of the first GROUP BY key that buckets a time, FLOOR(ts TO unit); null when none does.",
+            "type": "string"
+          },
+          "unit": {
+            "description": "The time bucket\u0027s unit; null with no time column.",
+            "enum": [
+              "SECOND",
+              "MINUTE",
+              "HOUR",
+              "DAY",
+              "WEEK",
+              "MONTH",
+              "QUARTER",
+              "YEAR"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "type": "object"
+      },
+      "AnalyticsResultShape": {
+        "description": "What a Grepr SQL run\u0027s result columns are. Each column\u0027s kind comes from the type the engine reports for it; whether the rows are ordered and the grouping come from the query\u0027s outermost SELECT.",
+        "properties": {
+          "grouping": {
+            "$ref": "#/components/schemas/AnalyticsResultGrouping"
+          },
+          "kinds": {
+            "description": "Each column\u0027s kind, in the order of the record\u0027s columns.",
+            "items": {
+              "description": "Each column\u0027s kind, in the order of the record\u0027s columns.",
+              "enum": [
+                "TIME",
+                "NUMBER",
+                "OTHER"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ordered": {
+            "description": "Whether the outermost query has an ORDER BY, so the rows come in its order.",
+            "type": "boolean"
+          },
+          "subtotals": {
+            "description": "Whether the query uses ROLLUP, CUBE or GROUPING SETS anywhere, so its rows may include subtotals that share keys with the rows they add up.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kinds"
+        ],
+        "type": "object"
+      },
       "AnalyticsTableBinding": {
-        "description": "Dataset tables available to the query under logical aliases.",
+        "description": "Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none.",
         "properties": {
           "alias": {
             "description": "Logical table name used by the analytical query.",
@@ -2302,6 +2451,17 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "tableFields": {
+            "additionalProperties": {
+              "description": "The columns a Grepr SQL query reads from each table type it can read, by table key (logs_raw, spans_raw), in the order * returns them.",
+              "items": {
+                "$ref": "#/components/schemas/AnalyticsField"
+              },
+              "type": "array"
+            },
+            "description": "The columns a Grepr SQL query reads from each table type it can read, by table key (logs_raw, spans_raw), in the order * returns them.",
+            "type": "object"
           }
         },
         "required": [
@@ -2700,7 +2860,7 @@
             "type": "integer"
           },
           "tables": {
-            "description": "Dataset tables available to the query under logical aliases.",
+            "description": "Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none.",
             "items": {
               "$ref": "#/components/schemas/AnalyticsTableBinding"
             },
@@ -2719,7 +2879,6 @@
         "required": [
           "name",
           "query",
-          "tables",
           "type"
         ],
         "type": "object",
@@ -5697,6 +5856,33 @@
         ],
         "type": "object"
       },
+      "DatasetDataTypes": {
+        "properties": {
+          "types": {
+            "default": [],
+            "description": "The data types the dataset holds, by table key: logs_raw (logs) and spans_raw (traces). A type is held once a pipeline that writes it to the dataset is created or updated, and then stays held, even after the pipeline stops or retention empties the table.",
+            "items": {
+              "description": "The data types the dataset holds, by table key: logs_raw (logs) and spans_raw (traces). A type is held once a pipeline that writes it to the dataset is created or updated, and then stays held, even after the pipeline stops or retention empties the table.",
+              "enum": [
+                "logs_raw",
+                "logs_dedup",
+                "logs_pattern_lookup",
+                "metrics_raw",
+                "metricdata_raw",
+                "spans_raw",
+                "spans_dedup"
+              ],
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "types"
+        ],
+        "type": "object"
+      },
       "DatasetEstimationConfig": {
         "properties": {
           "createdAt": {
@@ -6255,6 +6441,14 @@
       "EventRecord": {
         "description": "A streaming event record. Records are newline-separated as per the chunked output standard. Each record will contain a \u0027state\u0027 field and potentially a \u0027data\u0027 field. When the state is \u0027RUNNING\u0027, the \u0027data\u0027 field will be valid. In all other states, the \u0027data\u0027 field will be null.",
         "properties": {
+          "columns": {
+            "description": "An analytics run\u0027s result column names, in the query\u0027s order. Sent once: on the first row\u0027s record, or on the terminal record when there are no rows. Null on every other record.",
+            "items": {
+              "description": "An analytics run\u0027s result column names, in the query\u0027s order. Sent once: on the first row\u0027s record, or on the terminal record when there are no rows. Null on every other record.",
+              "type": "string"
+            },
+            "type": "array"
+          },
           "data": {
             "$ref": "#/components/schemas/ReadableData"
           },
@@ -6277,6 +6471,13 @@
               "RESOURCES_EXHAUSTED"
             ],
             "type": "string"
+          },
+          "message": {
+            "description": "Why a Grepr SQL run failed, in a sentence of the server\u0027s own, never the query engine\u0027s text. Set on that run\u0027s failed terminal record. Null on every other record.",
+            "type": "string"
+          },
+          "resultShape": {
+            "$ref": "#/components/schemas/AnalyticsResultShape"
           }
         },
         "required": [
@@ -19104,6 +19305,86 @@
           "Sinks"
         ]
       },
+      "SqlAnalyticsQuery": {
+        "properties": {
+          "datasetId": {
+            "description": "ID of the dataset whose tables the query reads.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of the time interval every table covers.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "limit": {
+            "default": 2500,
+            "description": "The most rows returned. A LIMIT in the query can only lower it.",
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "sql": {
+            "description": "One read-only Grepr SQL query. It reads only the tables\u0027 aliases, each bounded by the time range and its filter everywhere the query names it.",
+            "maxLength": 32768,
+            "minLength": 0,
+            "type": "string"
+          },
+          "start": {
+            "description": "Start of the time interval every table covers.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "tables": {
+            "description": "The tables the query reads, each under its own alias.",
+            "items": {
+              "$ref": "#/components/schemas/SqlAnalyticsTable"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "sql",
+          "start",
+          "tables"
+        ],
+        "type": "object"
+      },
+      "SqlAnalyticsTable": {
+        "properties": {
+          "alias": {
+            "description": "The name the SQL reads the table by. Unique within the query, ignoring case.",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/components/schemas/EventPredicate"
+          },
+          "table": {
+            "description": "The dataset\u0027s table the alias reads: `logs_raw` for logs, `spans_raw` for traces.",
+            "enum": [
+              "logs_raw",
+              "logs_dedup",
+              "logs_pattern_lookup",
+              "metrics_raw",
+              "metricdata_raw",
+              "spans_raw",
+              "spans_dedup"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias",
+          "filter",
+          "table"
+        ],
+        "type": "object"
+      },
       "SqlExecutable": {
         "description": "Base class for SQL statements",
         "discriminator": {
@@ -22049,7 +22330,7 @@
             "type": "integer"
           },
           "tables": {
-            "description": "Dataset tables available to the query under logical aliases.",
+            "description": "Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none.",
             "items": {
               "$ref": "#/components/schemas/AnalyticsTableBinding"
             },
@@ -22068,7 +22349,6 @@
         "required": [
           "name",
           "query",
-          "tables",
           "type"
         ],
         "type": "object",
@@ -25359,7 +25639,7 @@
             "description": "Agent created successfully"
           },
           "400": {
-            "description": "A referenced model or MCP integration does not exist"
+            "description": "A referenced model or MCP integration does not exist, or the schedule is invalid: not a five-field cron, fires under five minutes apart, an unknown timezone, or no agentMaxTokens to bound it"
           },
           "401": {
             "description": "Unauthorized"
@@ -25676,7 +25956,7 @@
             "description": "Agent updated successfully"
           },
           "400": {
-            "description": "A referenced model or MCP integration does not exist"
+            "description": "A referenced model or MCP integration does not exist, or the schedule is invalid: not a five-field cron, fires under five minutes apart, an unknown timezone, or no agentMaxTokens to bound it"
           },
           "401": {
             "description": "Unauthorized"
@@ -25767,7 +26047,8 @@
                   "ISSUE",
                   "WEBHOOK_SIGNAL",
                   "LOG_PATTERN_SIGNAL",
-                  "PIPELINE_SIGNAL"
+                  "PIPELINE_SIGNAL",
+                  "SCHEDULE_SIGNAL"
                 ],
                 "type": "string"
               },
@@ -27349,6 +27630,49 @@
           }
         ],
         "summary": "Update a dataset",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
+    "/v1/datasets/{id}/data-types": {
+      "get": {
+        "description": "Returns the data types the dataset holds, of logs_raw (logs) and spans_raw (traces). A type is held once a pipeline that writes it to the dataset is created or updated, and then stays held, even after the pipeline stops or retention empties the table.",
+        "operationId": "getDatasetDataTypes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetDataTypes"
+                }
+              }
+            },
+            "description": "The types the dataset holds."
+          },
+          "404": {
+            "description": "Dataset not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get the data types a dataset holds",
         "tags": [
           "Datasets"
         ]
