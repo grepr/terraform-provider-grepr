@@ -3798,7 +3798,8 @@
               "DISALLOWED_INPUT_CHANGE",
               "INVALID_SIGNAL_CONFIG",
               "UNVERIFIABLE_CHANGE",
-              "NO_EFFECTIVE_CHANGE"
+              "NO_EFFECTIVE_CHANGE",
+              "STALE_SIGNAL_ENTRY"
             ],
             "type": "string"
           },
@@ -14800,6 +14801,11 @@
           "autoApply": {
             "description": "Whether to apply the change directly (true) or record it as a suggestion for a human to review (false). This expresses intent only: the server enforces the proposing agent\u0027s approval mode, so a suggest-only agent\u0027s change is always recorded as a suggestion no matter what is passed here.",
             "type": "boolean"
+          },
+          "baseVersion": {
+            "description": "The pipeline version the change was computed from, as get_pipeline returned it. A change that replaces a signal mask or drop rule another investigation\u0027s fix changed in a later version is refused. Without it, fixes applied since the proposing investigation started count as later.",
+            "format": "int64",
+            "type": "integer"
           },
           "changeDescription": {
             "description": "One or two sentences a human reviewer reads first: what the change does and why. Required when the change is recorded as a suggestion.",
