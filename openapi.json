@@ -294,6 +294,9 @@
             ],
             "type": "string"
           },
+          "decisionConfiguration": {
+            "$ref": "#/components/schemas/AgentDecisionConfiguration"
+          },
           "description": {
             "description": "What the agent handles, shown to other agents when they list the agents; null for none.",
             "maxLength": 500,
@@ -414,6 +417,9 @@
             ],
             "type": "string"
           },
+          "decisionConfiguration": {
+            "$ref": "#/components/schemas/AgentDecisionConfiguration"
+          },
           "description": {
             "description": "What the agent handles, shown to other agents when they list the agents; null for none.",
             "maxLength": 500,
@@ -528,6 +534,9 @@
             ],
             "type": "string"
           },
+          "decisionConfiguration": {
+            "$ref": "#/components/schemas/AgentDecisionConfiguration"
+          },
           "description": {
             "description": "What the agent handles, shown to other agents; required, like worksOnIssues, and empty for none.",
             "maxLength": 500,
@@ -611,6 +620,7 @@
         },
         "required": [
           "changeApprovalMode",
+          "decisionConfiguration",
           "description",
           "enabledMcpIntegrations",
           "enabledSkills",
@@ -643,6 +653,26 @@
             "description": "The sum of the parts\u0027 tokens.",
             "format": "int32",
             "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AgentDecisionConfiguration": {
+        "description": "Whether an agent runs a decision step that may skip investigations of signals not worth investigating, and how.",
+        "properties": {
+          "enabled": {
+            "description": "Whether the decision step runs before an investigation; never for an agent that works on issues.",
+            "type": "boolean"
+          },
+          "guidance": {
+            "description": "Extra guidance from the operator, sent once with each decision request; null for none.",
+            "maxLength": 4000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "integrationId": {
+            "description": "The OpenAI integration the decision step uses; required when enabled.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -2810,7 +2840,7 @@
             "type": "string"
           },
           "type": {
-            "description": "Returns grouped agent session summaries through Athena.",
+            "description": "Returns grouped agent session summaries. The server runs it on the organization\u0027s engine; the type name doesn\u0027t choose Athena.",
             "enum": [
               "athena-agent-sessions-source"
             ],
@@ -2869,7 +2899,7 @@
             "type": "array"
           },
           "type": {
-            "description": "Executes an analytical query against dataset tables using Athena.",
+            "description": "Executes an analytical query against dataset tables. The server runs it on the organization\u0027s engine; the type name doesn\u0027t choose Athena.",
             "enum": [
               "athena-analytics-source"
             ],
@@ -6007,6 +6037,26 @@
         ],
         "type": "object"
       },
+      "DecisionOutcome": {
+        "properties": {
+          "reason": {
+            "enum": [
+              "TOO_MANY_SIGNALS",
+              "NO_PATTERN",
+              "HISTORY",
+              "FAILED"
+            ],
+            "type": "string"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/SignalDecision"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "DiscardingSink": {
         "description": "Sink that discards all of its input.",
         "properties": {
@@ -8139,7 +8189,8 @@
               "COMPLETED",
               "FAILED",
               "CANCELLED",
-              "DISCARDED"
+              "DISCARDED",
+              "SKIPPED"
             ],
             "type": "string"
           },
@@ -8170,6 +8221,9 @@
             "format": "date-time",
             "type": "string"
           },
+          "decision": {
+            "$ref": "#/components/schemas/DecisionOutcome"
+          },
           "endedAt": {
             "format": "date-time",
             "type": "string"
@@ -8191,7 +8245,8 @@
               "COMPLETED",
               "FAILED",
               "CANCELLED",
-              "DISCARDED"
+              "DISCARDED",
+              "SKIPPED"
             ],
             "type": "string"
           },
@@ -9068,7 +9123,8 @@
               "COMPLETED",
               "FAILED",
               "CANCELLED",
-              "DISCARDED"
+              "DISCARDED",
+              "SKIPPED"
             ],
             "type": "string"
           }
@@ -18379,6 +18435,24 @@
         "title": "Sibling Merge Rules",
         "type": "object"
       },
+      "SignalDecision": {
+        "properties": {
+          "cleared": {
+            "type": "boolean"
+          },
+          "comparedMemoryIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "memoryMatchProbability": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
       "SignalDropRule": {
         "properties": {
           "enabled": {
@@ -22345,7 +22419,7 @@
             "type": "array"
           },
           "type": {
-            "description": "Executes an analytical query using a Trino query engine.",
+            "description": "Executes an analytical query against dataset tables. The server runs it on the organization\u0027s engine; the type name doesn\u0027t choose Trino.",
             "enum": [
               "trino-analytics-source"
             ],
@@ -22413,7 +22487,7 @@
             "type": "string"
           },
           "type": {
-            "description": "Reads raw log events out of an Iceberg Table without pattern enrichment, executed against a Trino query engine.",
+            "description": "Reads raw log events out of an Iceberg Table without pattern enrichment. The server runs it on the organization\u0027s engine; the type name doesn\u0027t choose Trino.",
             "enum": [
               "trino-raw-log-source"
             ],
@@ -22496,7 +22570,7 @@
             "type": "string"
           },
           "type": {
-            "description": "Reads spans using Grepr\u0027s internal query system out of an Iceberg Table for processing, executed against a Trino query engine.",
+            "description": "Reads spans using Grepr\u0027s internal query system out of an Iceberg Table for processing. The server runs it on the organization\u0027s engine; the type name doesn\u0027t choose Trino.",
             "enum": [
               "trino-raw-span-source"
             ],
@@ -22592,7 +22666,7 @@
             "type": "string"
           },
           "type": {
-            "description": "Reads events using Grepr\u0027s internal query system out of an Iceberg Table for processing, executed against a Trino query engine.",
+            "description": "Reads events using Grepr\u0027s internal query system out of an Iceberg Table for processing. The server runs it on the organization\u0027s engine; the type name doesn\u0027t choose Trino.",
             "enum": [
               "trino-reducer-log-source"
             ],
