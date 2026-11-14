@@ -2369,6 +2369,50 @@
         ],
         "type": "object"
       },
+      "AnalyticsSource": {
+        "properties": {
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/AnalyticsQuery"
+          },
+          "scanBudgetBytes": {
+            "default": 107374182400,
+            "description": "Maximum number of bytes this query may scan.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "tables": {
+            "description": "Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none.",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsTableBinding"
+            },
+            "maxItems": 2147483647,
+            "minItems": 1,
+            "type": "array"
+          },
+          "type": {
+            "description": "Executes an analytical query against dataset tables, on the query engine the server chooses for the organization.",
+            "enum": [
+              "analytics-source"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "query",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
       "AnalyticsTableBinding": {
         "description": "Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none.",
         "properties": {
@@ -2865,50 +2909,6 @@
           "name",
           "query",
           "start",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sources"
-        ]
-      },
-      "AthenaAnalyticsSource": {
-        "properties": {
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "query": {
-            "$ref": "#/components/schemas/AnalyticsQuery"
-          },
-          "scanBudgetBytes": {
-            "default": 107374182400,
-            "description": "Maximum number of bytes this query may scan.",
-            "format": "int64",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "tables": {
-            "description": "Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none.",
-            "items": {
-              "$ref": "#/components/schemas/AnalyticsTableBinding"
-            },
-            "maxItems": 2147483647,
-            "minItems": 1,
-            "type": "array"
-          },
-          "type": {
-            "description": "Executes an analytical query against dataset tables. The server runs it on the organization\u0027s engine; the type name doesn\u0027t choose Athena.",
-            "enum": [
-              "athena-analytics-source"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "query",
           "type"
         ],
         "type": "object",
@@ -13453,8 +13453,8 @@
             "agent-sessions-sync-sink": "#/components/schemas/AgentSessionsSynchronousSink",
             "agent-signal-sink": "#/components/schemas/AgentSignalSink",
             "agent-span-processor": "#/components/schemas/AgentSpanProcessor",
+            "analytics-source": "#/components/schemas/AnalyticsSource",
             "athena-agent-sessions-source": "#/components/schemas/AthenaAgentSessionsSource",
-            "athena-analytics-source": "#/components/schemas/AthenaAnalyticsSource",
             "cloudtrail-file-source": "#/components/schemas/CloudTrailLogsFileSource",
             "datadog-log-agent-source": "#/components/schemas/DatadogLogAgentSource",
             "datadog-log-cloud-source": "#/components/schemas/DatadogLogCloudSource",
@@ -13524,7 +13524,6 @@
             "trace-sampler": "#/components/schemas/TraceSampler",
             "traces-iceberg-table-source": "#/components/schemas/TracesIcebergTableSource",
             "trigger-action": "#/components/schemas/TriggerActionOp",
-            "trino-analytics-source": "#/components/schemas/TrinoAnalyticsSource",
             "trino-raw-log-source": "#/components/schemas/TrinoRawLogsSource",
             "trino-raw-span-source": "#/components/schemas/TrinoRawSpanSource",
             "trino-reducer-log-source": "#/components/schemas/TrinoReducerLogSource",
@@ -13716,7 +13715,7 @@
             "$ref": "#/components/schemas/LegacyDatadogMetricsSink"
           },
           {
-            "$ref": "#/components/schemas/AthenaAnalyticsSource"
+            "$ref": "#/components/schemas/AnalyticsSource"
           },
           {
             "$ref": "#/components/schemas/GreprReducerLogSource"
@@ -13729,9 +13728,6 @@
           },
           {
             "$ref": "#/components/schemas/GreprRawSpanSource"
-          },
-          {
-            "$ref": "#/components/schemas/TrinoAnalyticsSource"
           },
           {
             "$ref": "#/components/schemas/TrinoReducerLogSource"
@@ -22391,50 +22387,6 @@
           }
         },
         "type": "object"
-      },
-      "TrinoAnalyticsSource": {
-        "properties": {
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "query": {
-            "$ref": "#/components/schemas/AnalyticsQuery"
-          },
-          "scanBudgetBytes": {
-            "default": 107374182400,
-            "description": "Maximum number of bytes this query may process.",
-            "format": "int64",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "tables": {
-            "description": "Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none.",
-            "items": {
-              "$ref": "#/components/schemas/AnalyticsTableBinding"
-            },
-            "maxItems": 2147483647,
-            "minItems": 1,
-            "type": "array"
-          },
-          "type": {
-            "description": "Executes an analytical query against dataset tables. The server runs it on the organization\u0027s engine; the type name doesn\u0027t choose Trino.",
-            "enum": [
-              "trino-analytics-source"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "query",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sources"
-        ]
       },
       "TrinoRawLogsSource": {
         "properties": {
