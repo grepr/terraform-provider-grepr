@@ -661,7 +661,7 @@
         "description": "Whether an agent's queued pipeline log signals are screened by a decision model, which drops those not worth investigating, and how.",
         "properties": {
           "enabled": {
-            "description": "Whether the decision step screens the agent's queued signals; never for an agent that works on issues.",
+            "description": "Whether the decision step screens the agent's queued signals.",
             "type": "boolean"
           },
           "guidance": {
