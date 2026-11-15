@@ -658,10 +658,10 @@
         "type": "object"
       },
       "AgentDecisionConfiguration": {
-        "description": "Whether an agent runs a decision step that may skip investigations of signals not worth investigating, and how.",
+        "description": "Whether an agent's queued pipeline log signals are screened by a decision model, which drops those not worth investigating, and how.",
         "properties": {
           "enabled": {
-            "description": "Whether the decision step runs before an investigation; never for an agent that works on issues.",
+            "description": "Whether the decision step screens the agent's queued signals; never for an agent that works on issues.",
             "type": "boolean"
           },
           "guidance": {
@@ -673,6 +673,15 @@
           "integrationId": {
             "description": "The OpenAI integration the decision step uses; required when enabled.",
             "type": "string"
+          },
+          "skipThreshold": {
+            "description": "How confident the decision model must be that a signal is not worth investigating for the signal to be dropped before it starts a run, from 0.5 to 1; omitted, it is 0.95.",
+            "exclusiveMaximum": false,
+            "exclusiveMinimum": false,
+            "format": "double",
+            "maximum": 1.0,
+            "minimum": 0.5,
+            "type": "number"
           }
         },
         "type": "object"
@@ -6037,26 +6046,6 @@
         ],
         "type": "object"
       },
-      "DecisionOutcome": {
-        "properties": {
-          "reason": {
-            "enum": [
-              "TOO_MANY_SIGNALS",
-              "NO_PATTERN",
-              "HISTORY",
-              "FAILED"
-            ],
-            "type": "string"
-          },
-          "signals": {
-            "items": {
-              "$ref": "#/components/schemas/SignalDecision"
-            },
-            "type": "array"
-          }
-        },
-        "type": "object"
-      },
       "DiscardingSink": {
         "description": "Sink that discards all of its input.",
         "properties": {
@@ -8220,9 +8209,6 @@
           "createdAt": {
             "format": "date-time",
             "type": "string"
-          },
-          "decision": {
-            "$ref": "#/components/schemas/DecisionOutcome"
           },
           "endedAt": {
             "format": "date-time",
@@ -18429,24 +18415,6 @@
           "predicate"
         ],
         "title": "Sibling Merge Rules",
-        "type": "object"
-      },
-      "SignalDecision": {
-        "properties": {
-          "cleared": {
-            "type": "boolean"
-          },
-          "comparedMemoryIds": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "memoryMatchProbability": {
-            "format": "double",
-            "type": "number"
-          }
-        },
         "type": "object"
       },
       "SignalDropRule": {
