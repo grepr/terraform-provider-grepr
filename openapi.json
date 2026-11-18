@@ -5939,33 +5939,6 @@
         ],
         "type": "object"
       },
-      "DatasetDataTypes": {
-        "properties": {
-          "types": {
-            "default": [],
-            "description": "The data types the dataset holds, by table key: logs_raw (logs) and spans_raw (traces). A type is held once a pipeline that writes it to the dataset is created or updated, and then stays held, even after the pipeline stops or retention empties the table.",
-            "items": {
-              "description": "The data types the dataset holds, by table key: logs_raw (logs) and spans_raw (traces). A type is held once a pipeline that writes it to the dataset is created or updated, and then stays held, even after the pipeline stops or retention empties the table.",
-              "enum": [
-                "logs_raw",
-                "logs_dedup",
-                "logs_pattern_lookup",
-                "metrics_raw",
-                "metricdata_raw",
-                "spans_raw",
-                "spans_dedup"
-              ],
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          }
-        },
-        "required": [
-          "types"
-        ],
-        "type": "object"
-      },
       "DatasetEstimationConfig": {
         "properties": {
           "createdAt": {
@@ -6021,6 +5994,16 @@
       },
       "DatasetRead": {
         "properties": {
+          "dataTypes": {
+            "default": [],
+            "description": "The kinds of data the dataset holds, such as logs, traces, metrics and agent_sessions. A kind is held once a pipeline that writes it to the dataset is created or updated. Other kinds may be added; clients ignore those they don\u0027t know.",
+            "items": {
+              "description": "The kinds of data the dataset holds, such as logs, traces, metrics and agent_sessions. A kind is held once a pipeline that writes it to the dataset is created or updated. Other kinds may be added; clients ignore those they don\u0027t know.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
           "id": {
             "type": "string"
           },
@@ -27405,49 +27388,6 @@
           }
         ],
         "summary": "Update a dataset",
-        "tags": [
-          "Datasets"
-        ]
-      }
-    },
-    "/v1/datasets/{id}/data-types": {
-      "get": {
-        "description": "Returns the data types the dataset holds, of logs_raw (logs) and spans_raw (traces). A type is held once a pipeline that writes it to the dataset is created or updated, and then stays held, even after the pipeline stops or retention empties the table.",
-        "operationId": "getDatasetDataTypes",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DatasetDataTypes"
-                }
-              }
-            },
-            "description": "The types the dataset holds."
-          },
-          "404": {
-            "description": "Dataset not found."
-          }
-        },
-        "security": [
-          {
-            "grepr-api-key": []
-          },
-          {
-            "grepr-oidc": []
-          }
-        ],
-        "summary": "Get the data types a dataset holds",
         "tags": [
           "Datasets"
         ]
