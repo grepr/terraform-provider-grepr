@@ -341,8 +341,8 @@
             "type": "integer"
           },
           "maxQueuedInvestigations": {
-            "default": 1000,
-            "description": "How many of the agent\u0027s signal-triggered investigations may wait in the queue; past it, intake drops the agent\u0027s new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 1000, and an update that leaves it out keeps it.",
+            "default": 200,
+            "description": "How many of the agent\u0027s signal-triggered investigations may wait in the queue; past it, intake drops the agent\u0027s new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 200, and an update that leaves it out keeps it.",
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -477,7 +477,7 @@
             "type": "integer"
           },
           "maxQueuedInvestigations": {
-            "description": "How many of the agent\u0027s signal-triggered investigations may wait in the queue; past it, intake drops the agent\u0027s new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 1000, and an update that leaves it out keeps it.",
+            "description": "How many of the agent\u0027s signal-triggered investigations may wait in the queue; past it, intake drops the agent\u0027s new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 200, and an update that leaves it out keeps it.",
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -604,7 +604,7 @@
             "type": "integer"
           },
           "maxQueuedInvestigations": {
-            "description": "How many of the agent\u0027s signal-triggered investigations may wait in the queue; past it, intake drops the agent\u0027s new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 1000, and an update that leaves it out keeps it.",
+            "description": "How many of the agent\u0027s signal-triggered investigations may wait in the queue; past it, intake drops the agent\u0027s new signals without recording an investigation. Scheduled and manual runs do not count. Null falls back to 200, and an update that leaves it out keeps it.",
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -1912,22 +1912,6 @@
         },
         "type": "object"
       },
-      "AggType": {
-        "description": "Aggregation function.",
-        "enum": [
-          "LATEST",
-          "SUM",
-          "AVG",
-          "CUMULATIVE",
-          "CUMULATIVE_UPDOWN",
-          "DEFAULT",
-          "PERCENTILE",
-          "SLOPE",
-          "MAX",
-          "MIN"
-        ],
-        "type": "string"
-      },
       "AggregationAccumulator": {
         "properties": {
           "accumulatorType": {
@@ -1948,10 +1932,9 @@
         "properties": {
           "args": {
             "default": [],
-            "description": "Function arguments. Heterogeneous; validated at pipeline construction. PERCENTILE accepts [rank], [rank, relativeAccuracy], or [rank, relativeAccuracy, maxNumBins].",
+            "description": "Function arguments, validated at pipeline construction. PERCENTILE accepts [rank], [rank, relativeAccuracy], or [rank, relativeAccuracy, maxNumBins].",
             "items": {
-              "description": "Function arguments. Heterogeneous; validated at pipeline construction. PERCENTILE accepts [rank], [rank, relativeAccuracy], or [rank, relativeAccuracy, maxNumBins].",
-              "type": "object"
+              "type": "number"
             },
             "type": "array"
           },
@@ -1960,7 +1943,7 @@
             "type": "string"
           },
           "fn": {
-            "$ref": "#/components/schemas/AggType"
+            "$ref": "#/components/schemas/MetricsRuleFunction"
           }
         },
         "required": [
@@ -2000,6 +1983,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "insert",
+          "label"
+        ],
         "type": "object"
       },
       "AnalyticsDiagnostic": {
@@ -2075,6 +2062,7 @@
         "type": "object"
       },
       "AnalyticsDraftRequest": {
+        "description": "An analytics query as it stands while it is being written. A builder query\u0027s table is logs_raw, the default, or metrics_points, and the query is checked against that table\u0027s columns.",
         "properties": {
           "datasetId": {
             "description": "Dataset a builder query reads. Supplying it checks the scan budget against that dataset\u0027s ceiling and requires VIEW permission on it. A Grepr SQL query names its own dataset, which this must match when given.",
@@ -2088,6 +2076,9 @@
             "example": 107374182400,
             "format": "int64",
             "type": "integer"
+          },
+          "table": {
+            "$ref": "#/components/schemas/DatasetTable"
           }
         },
         "required": [
@@ -2144,6 +2135,14 @@
             "type": "array"
           },
           "name": {
+            "type": "string"
+          },
+          "rows": {
+            "description": "The rows a structured query must read for this column: TAG for a metrics_series tag column, which only a query with rows TAG reads. Absent for a column every query reads.",
+            "enum": [
+              "SERIES",
+              "TAG"
+            ],
             "type": "string"
           },
           "type": {
@@ -2461,7 +2460,7 @@
         ]
       },
       "AnalyticsTableBinding": {
-        "description": "Dataset tables a builder query reads, under logical aliases. A Grepr SQL query names its own dataset and tables, so its source has none.",
+        "description": "A dataset-owned table exposed to the query under a logical alias. An analysis binds logs_raw or metrics_points.",
         "properties": {
           "alias": {
             "description": "Logical table name used by the analytical query.",
@@ -2474,17 +2473,7 @@
             "type": "string"
           },
           "table": {
-            "description": "Dataset-owned table exposed under the logical alias.",
-            "enum": [
-              "logs_raw",
-              "logs_dedup",
-              "logs_pattern_lookup",
-              "metrics_raw",
-              "metricdata_raw",
-              "spans_raw",
-              "spans_dedup"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/DatasetTable"
           }
         },
         "required": [
@@ -2556,14 +2545,6 @@
             "description": "Largest scan budget, in bytes, an analytics query over this dataset may request. Absent when no ceiling applies, including when the engine the server runs the organization\u0027s queries on has none.",
             "format": "int64",
             "type": "integer"
-          },
-          "promotedTagKeys": {
-            "description": "Promoted logs_raw tag keys for the requested dataset.",
-            "items": {
-              "description": "Promoted logs_raw tag keys for the requested dataset.",
-              "type": "string"
-            },
-            "type": "array"
           },
           "reservedWords": {
             "description": "Words the analytics SQL grammar reserves; they cannot be used as result aliases.",
@@ -4213,67 +4194,6 @@
           "Sources"
         ]
       },
-      "CohortOutputDecl": {
-        "description": "One cohort-output entry.",
-        "properties": {
-          "aggregations": {
-            "default": [],
-            "description": "Aggregations to emit. Null \u003d [{ fn: DEFAULT }].",
-            "items": {
-              "$ref": "#/components/schemas/AggregationDecl"
-            },
-            "type": "array"
-          },
-          "selectors": {
-            "$ref": "#/components/schemas/FilterPrimitive"
-          },
-          "spaceAggregation": {
-            "default": true,
-            "description": "When false, emit per-series time-only aggregation (no space/cohort collapse); aggregations apply as time-window folds. Default true keeps cohort aggregation.",
-            "type": "boolean"
-          }
-        },
-        "type": "object"
-      },
-      "CohortsConfig": {
-        "description": "Cohort-identity + space-aggregation configuration.",
-        "properties": {
-          "identifyingAttributes": {
-            "default": [],
-            "description": "Level-prefixed attribute keys that group objects into cohorts.",
-            "example": [
-              "resource.cluster",
-              "resource.region"
-            ],
-            "items": {
-              "description": "Level-prefixed attribute keys that group objects into cohorts.",
-              "example": "[\"resource.cluster\",\"resource.region\"]",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "metadataAttributes": {
-            "default": [],
-            "description": "Level-prefixed attribute keys describing cohorts.",
-            "items": {
-              "description": "Level-prefixed attribute keys describing cohorts.",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "outputs": {
-            "default": [],
-            "description": "Ordered cohort-output entries (first-match-wins).",
-            "items": {
-              "$ref": "#/components/schemas/CohortOutputDecl"
-            },
-            "type": "array"
-          }
-        },
-        "type": "object"
-      },
       "CompleteSpan": {
         "description": "A complete span with its resource and instrumentation scope context.",
         "properties": {
@@ -4602,10 +4522,11 @@
         "type": "object"
       },
       "CreateBackfillJob": {
-        "description": "Parameters for creating a logs or spans backfill batch job.",
+        "description": "Parameters for creating a logs, spans or metrics backfill batch job.",
         "discriminator": {
           "mapping": {
             "logs": "#/components/schemas/CreateLogsBackfillJob",
+            "metrics": "#/components/schemas/CreateMetricsBackfillJob",
             "spans": "#/components/schemas/CreateSpansBackfillJob"
           },
           "propertyName": "dataType"
@@ -4616,6 +4537,9 @@
           },
           {
             "$ref": "#/components/schemas/CreateSpansBackfillJob"
+          },
+          {
+            "$ref": "#/components/schemas/CreateMetricsBackfillJob"
           }
         ],
         "properties": {
@@ -4628,10 +4552,6 @@
           "end": {
             "format": "date-time",
             "type": "string"
-          },
-          "limit": {
-            "format": "int32",
-            "type": "integer"
           },
           "name": {
             "type": "string"
@@ -4893,7 +4813,7 @@
             "type": "string"
           },
           "datasetId": {
-            "description": "The dataset the backfill reads from and the dedup sinks track delivery in.",
+            "description": "The dataset the backfill reads from.",
             "pattern": "[a-z0-9]{1,13}",
             "type": "string"
           },
@@ -4968,13 +4888,93 @@
           },
           "vendorSinkIntegrationIds": {
             "default": [],
-            "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips: exactly the integrations the sinks send to, or empty. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
+            "description": "Vendor integration IDs, if any, whose prior delivery, as the dataset records it, the backfill skips: exactly the integrations the sinks send to, or empty. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
             "items": {
-              "description": "Vendor integration IDs, if any, whose prior delivery the backfill skips: exactly the integrations the sinks send to, or empty. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
+              "description": "Vendor integration IDs, if any, whose prior delivery, as the dataset records it, the backfill skips: exactly the integrations the sinks send to, or empty. Also gates concurrent overlapping backfills. Empty (the default) does no per-vendor dedup join and never blocks on other backfills.",
               "pattern": "[a-z0-9]{1,13}",
               "type": "string"
             },
             "type": "array"
+          }
+        },
+        "required": [
+          "dataType",
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "sinks",
+          "start"
+        ],
+        "type": "object"
+      },
+      "CreateMetricsBackfillJob": {
+        "description": "Parameters for a metrics backfill.",
+        "properties": {
+          "dataType": {
+            "description": "Selects the built-in metrics backfill template.",
+            "enum": [
+              "metrics"
+            ],
+            "type": "string"
+          },
+          "datasetId": {
+            "description": "The dataset the backfill reads from.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of the time interval to backfill.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name of the backfill job. Must match the job name pattern [a-z0-9_]{1,128}.",
+            "example": "manual_backfill_1",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/MetricEventPredicate"
+          },
+          "sinks": {
+            "description": "The vendor sink operations that deliver the backfilled events. Passed through verbatim, matching the sinks a rule action would carry.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "maxItems": 2147483647,
+            "minItems": 1,
+            "type": "array"
+          },
+          "start": {
+            "description": "Start of the time interval to backfill, inclusive.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "tags": {
+            "additionalProperties": {
+              "description": "Custom tags added to the backfill job for ease of search.",
+              "example": "{\"source\":\"manual\"}",
+              "type": "string"
+            },
+            "default": {},
+            "description": "Custom tags added to the backfill job for ease of search.",
+            "example": {
+              "source": "manual"
+            },
+            "type": "object"
+          },
+          "teamIds": {
+            "default": [],
+            "description": "The team IDs that the backfill job is associated with.",
+            "items": {
+              "description": "The team IDs that the backfill job is associated with.",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
           }
         },
         "required": [
@@ -5095,7 +5095,7 @@
             "type": "string"
           },
           "datasetId": {
-            "description": "The dataset the backfill reads from and the dedup sinks track delivery in.",
+            "description": "The dataset the backfill reads from.",
             "pattern": "[a-z0-9]{1,13}",
             "type": "string"
           },
@@ -5447,6 +5447,11 @@
             "minLength": 0,
             "type": "string"
           },
+          "forwardSketchesAndServiceChecks": {
+            "default": false,
+            "description": "Whether Grepr forwards the Datadog agent\u0027s sketches (distributions) and service checks to Datadog, as the agent sent them. Turn it on only when Grepr is the only destination for those payloads; an agent that also sends them to Datadog directly already delivers them. Unset means off.",
+            "type": "boolean"
+          },
           "includeNeverViewedDashboards": {
             "default": true,
             "description": "When the active dashboard threshold is set, whether dashboards that were never viewed are still imported. Unset means they are.",
@@ -5661,6 +5666,97 @@
           "type": "datadog-mcp"
         }
       },
+      "DatadogMetricsAgentSource": {
+        "properties": {
+          "duplicateWindow": {
+            "default": "PT1H",
+            "description": "How long after a host\u0027s record a byte-identical copy of it, as a Datadog agent\u0027s retry sends, is dropped. 0 keeps every copy. At most an hour. Records without a host aren\u0027t checked. Changes without a restart.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "identifyingKeys": {
+            "default": [
+              "env"
+            ],
+            "description": "Tag keys that identify a series where they would otherwise describe it: exact keys or globs with *. A series tag matching one stays identifying even when it also matches nonIdentifyingKeys. Host tags are descriptive unless listed here. A host tag listed here identifies the host\u0027s series, unless its key is one of the resources the agent sent for the series, such as host, which stays as the agent sent it. So a change in its value makes a new series, and a metrics reducer can group cohorts by it. For example, to group cohorts by env and cluster, set identifyingKeys to [\"env\", \"cluster\"] and the reducer\u0027s groupBy.keys to [\"env\", \"cluster\"]. A listed host tag also reaches Datadog as a resource. Defaults to [\"env\"]. Setting it replaces the default, so list env to keep it, or set [] to identify by no tag.",
+            "example": [
+              "env",
+              "cluster"
+            ],
+            "items": {
+              "default": "[\"env\"]",
+              "description": "Tag keys that identify a series where they would otherwise describe it: exact keys or globs with *. A series tag matching one stays identifying even when it also matches nonIdentifyingKeys. Host tags are descriptive unless listed here. A host tag listed here identifies the host\u0027s series, unless its key is one of the resources the agent sent for the series, such as host, which stays as the agent sent it. So a change in its value makes a new series, and a metrics reducer can group cohorts by it. For example, to group cohorts by env and cluster, set identifyingKeys to [\"env\", \"cluster\"] and the reducer\u0027s groupBy.keys to [\"env\", \"cluster\"]. A listed host tag also reaches Datadog as a resource. Defaults to [\"env\"]. Setting it replaces the default, so list env to keep it, or set [] to identify by no tag.",
+              "example": "[\"env\",\"cluster\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "integrationId": {
+            "description": "The Datadog integration id.",
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "nonIdentifyingKeys": {
+            "default": [],
+            "description": "Tag keys that don\u0027t identify a series: exact keys or globs with *. Matching series tags stay on the metric, but a change in their values doesn\u0027t make a new series, unless they also match identifyingKeys. So env, identifying by default, stays identifying unless identifyingKeys leaves it out. The host key can\u0027t be configured.",
+            "items": {
+              "description": "Tag keys that don\u0027t identify a series: exact keys or globs with *. Matching series tags stay on the metric, but a change in their values doesn\u0027t make a new series, unless they also match identifyingKeys. So env, identifying by default, stays identifying unless identifyingKeys leaves it out. The host key can\u0027t be configured.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "renames": {
+            "default": [],
+            "description": "Metric renames, in order: the first that matches a metric\u0027s whole name, a plain name exactly or a regex after r/, renames it, and every later step sees only the new name. A change restarts the pipeline.",
+            "items": {
+              "$ref": "#/components/schemas/MetricRename"
+            },
+            "type": "array"
+          },
+          "softLateDeadline": {
+            "default": "PT20S",
+            "description": "How long to wait for late points before a window\u0027s first send.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "type": {
+            "description": "Reads metrics from Grepr\u0027s Datadog collection agent into the v3 model.",
+            "enum": [
+              "datadog-metric-agent-source-v3"
+            ],
+            "type": "string"
+          },
+          "unknownHostWait": {
+            "default": "PT10M",
+            "description": "How long a new host\u0027s metrics wait for its metadata, their points dropped, before they go on without its host tags. 0 means don\u0027t wait: they go on at once, without the host\u0027s tags until its metadata comes. Changes without a restart.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "watermarkInterval": {
+            "default": "PT1S",
+            "description": "How often the job\u0027s watermarks advance, which paces a metrics reducer\u0027s first sends and expiries. It sets the job\u0027s watermark interval over the job-level one. At least a millisecond.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          }
+        },
+        "required": [
+          "integrationId",
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
       "DatadogMetricsSink": {
         "properties": {
           "additionalTags": {
@@ -5674,14 +5770,42 @@
             },
             "type": "array"
           },
+          "compression": {
+            "default": "ZSTD1",
+            "description": "How the sink compresses each request to Datadog: ZSTD1, zstd at level 1, as the Datadog agent sends it, or GZIP at zlib\u0027s default level.",
+            "enum": [
+              "GZIP",
+              "ZSTD1"
+            ],
+            "type": "string"
+          },
+          "hostMetadata": {
+            "default": false,
+            "description": "Send host metadata to Datadog: each real host\u0027s stored metadata, for the hosts this sink sends series for, and each virtual cohort host\u0027s agreed tags. A metrics reducer pipeline turns it on.",
+            "type": "boolean"
+          },
           "integrationId": {
             "description": "The Datadog integration id.",
+            "type": "string"
+          },
+          "maxLateData": {
+            "description": "Skip a point older than this when it would go out, counted, since Datadog drops points over an hour old unless their metric has historical ingestion. At least a second; unset skips nothing. A metrics reducer pipeline sets it.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
             "type": "string"
           },
           "name": {
             "example": "operation_name",
             "pattern": "[a-z0-9_]{1,128}",
             "type": "string"
+          },
+          "orderedSends": {
+            "default": false,
+            "description": "Submit each series\u0027 points to Datadog in the order they come, never two requests carrying one series at once, so a window sent again goes out after its earlier send. A metrics reducer pipeline turns it on. The sink must read its producer directly, or through clones and unions only.",
+            "type": "boolean"
+          },
+          "sendQueue": {
+            "$ref": "#/components/schemas/DatadogSendQueue"
           },
           "type": {
             "description": "Writes processed metrics to Datadog.",
@@ -5781,6 +5905,69 @@
         ],
         "type": "object"
       },
+      "DatadogSendQueue": {
+        "description": "How a Datadog metrics sink with ordered sends queues and sends its series. Every field has a default.",
+        "properties": {
+          "bufferTime": {
+            "default": "PT3S",
+            "description": "How long a partial request waits for more series before it goes, from a millisecond to a day.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "callTimeout": {
+            "default": "PT10S",
+            "description": "How long one HTTP call may take, the client\u0027s own retries included, from a millisecond to a day.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "maxBatchBytes": {
+            "default": 511488,
+            "description": "The most uncompressed payload bytes a request carries, from 65536 to 511488, so a request stays within Datadog\u0027s 512,000-byte limit.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxBatchSeries": {
+            "default": 2000,
+            "description": "The most series a request carries.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxBufferedBytes": {
+            "default": 4194304,
+            "description": "The most bytes a sink subtask queues; past it, the sink holds back its input until requests drain the queue. At least maxBatchBytes. The keyed sink also keeps idle distribution series in up to as many bytes again, outside this bound.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxRetries": {
+            "default": 3,
+            "description": "Attempts past the first before a point is dropped and logged, below 32767; -1 retries until Datadog takes it.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxSeriesBytes": {
+            "default": 1000000,
+            "description": "The most bytes one series may take; a larger one fails the job.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "requestsInFlight": {
+            "default": 5,
+            "description": "Requests in flight per sink subtask, never two carrying the same series.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "retryDelay": {
+            "default": "PT0.1S",
+            "description": "How long a retryable failure\u0027s points wait before they queue again, up to a day.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "DatadogStatsSink": {
         "description": "Forwards Datadog stats payloads to the Datadog platform for accurate RED metrics. Stats are pre-computed by the Datadog agent and bypass all processing.",
         "properties": {
@@ -5824,6 +6011,24 @@
         "x-tags": [
           "Sinks"
         ]
+      },
+      "DatadogTemplateSourceSettings": {
+        "description": "Settings for a Datadog agents\u0027 metrics source.",
+        "properties": {
+          "duplicateWindow": {
+            "description": "How long after a host\u0027s record a byte-identical copy of it, as a Datadog agent\u0027s retry sends, is dropped. 0 keeps every copy. At most an hour. Records without a host aren\u0027t checked. Changes without a restart. Absent, an hour.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "unknownHostWait": {
+            "description": "How long a new host\u0027s metrics wait for its metadata, their points dropped, before they go on without its host tags. 0 means don\u0027t wait: they go on at once, without the host\u0027s tags until its metadata comes. At least 0. Changes without a restart. Absent, 10 minutes.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          }
+        },
+        "type": "object"
       },
       "DatadogTraceAgentSource": {
         "properties": {
@@ -6043,6 +6248,21 @@
         ],
         "type": "object"
       },
+      "DatasetTable": {
+        "description": "One of the Iceberg tables a dataset owns.",
+        "enum": [
+          "logs_raw",
+          "logs_dedup",
+          "logs_pattern_lookup",
+          "metrics_raw",
+          "metrics_points",
+          "metrics_series",
+          "metrics_recompute_markers",
+          "spans_raw",
+          "spans_dedup"
+        ],
+        "type": "string"
+      },
       "DatasetUpdate": {
         "properties": {
           "name": {
@@ -6145,14 +6365,14 @@
         "properties": {
           "attributeFilters": {
             "additionalProperties": {
-              "description": "Level-prefixed attribute key → glob pattern. All entries must match.",
-              "example": "{\"resource.test\":\"true\"}",
+              "description": "Tag key → value pattern, a glob or an RE2 regex after r/ that matches the whole value, each key read from a series\u0027 merged attributes. All entries must match.",
+              "example": "{\"test\":\"true\"}",
               "type": "string"
             },
             "default": {},
-            "description": "Level-prefixed attribute key → glob pattern. All entries must match.",
+            "description": "Tag key → value pattern, a glob or an RE2 regex after r/ that matches the whole value, each key read from a series\u0027 merged attributes. All entries must match.",
             "example": {
-              "resource.test": "true"
+              "test": "true"
             },
             "type": "object"
           },
@@ -6754,14 +6974,14 @@
         "properties": {
           "attributeFilters": {
             "additionalProperties": {
-              "description": "Level-prefixed attribute key → glob pattern. All entries must match.",
-              "example": "{\"resource.env\":\"prod\"}",
+              "description": "Tag key → value pattern, a glob or an RE2 regex after r/ that matches the whole value, each key read from a series\u0027 merged attributes. All entries must match.",
+              "example": "{\"env\":\"prod\"}",
               "type": "string"
             },
             "default": {},
-            "description": "Level-prefixed attribute key → glob pattern. All entries must match.",
+            "description": "Tag key → value pattern, a glob or an RE2 regex after r/ that matches the whole value, each key read from a series\u0027 merged attributes. All entries must match.",
             "example": {
-              "resource.env": "prod"
+              "env": "prod"
             },
             "type": "object"
           },
@@ -7707,6 +7927,58 @@
         },
         "type": "object"
       },
+      "GroupByConfig": {
+        "description": "How objects are grouped into cohorts for aggregation across objects.",
+        "properties": {
+          "keys": {
+            "default": [],
+            "description": "Tag keys that group objects into cohorts, such as env. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A key the source sends only as descriptive is absent: to group by a tag the source describes by default, declare it identifying at the source too. A series missing a key forms a cohort of its other keys\u0027 values. A rule that aggregates across objects writes each key back where the series had it, on its resource, its scope or itself, each object key with the cohort\u0027s id, the first series of a window deciding where its series differ, and carries the id as grepr.cohort, a series tag. The id is cohort_ followed by the cohort\u0027s pairs as key-value, sorted and joined by _, as in cohort_env-prod_service-api. A bare tag is its key alone; the id is the bare cohort when every key is absent, and cohort-default for a reducer without cohort keys.",
+            "example": [
+              "env",
+              "cluster"
+            ],
+            "items": {
+              "description": "Tag keys that group objects into cohorts, such as env. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A key the source sends only as descriptive is absent: to group by a tag the source describes by default, declare it identifying at the source too. A series missing a key forms a cohort of its other keys\u0027 values. A rule that aggregates across objects writes each key back where the series had it, on its resource, its scope or itself, each object key with the cohort\u0027s id, the first series of a window deciding where its series differ, and carries the id as grepr.cohort, a series tag. The id is cohort_ followed by the cohort\u0027s pairs as key-value, sorted and joined by _, as in cohort_env-prod_service-api. A bare tag is its key alone; the id is the bare cohort when every key is absent, and cohort-default for a reducer without cohort keys.",
+              "example": "[\"env\",\"cluster\"]",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "type": "object"
+      },
+      "GroupByRule": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProcessingRule"
+          },
+          {
+            "properties": {
+              "aggregations": {
+                "default": [],
+                "description": "Aggregations to emit. Null \u003d [{ fn: DEFAULT }].",
+                "items": {
+                  "$ref": "#/components/schemas/AggregationDecl"
+                },
+                "type": "array"
+              },
+              "window": {
+                "description": "This entry\u0027s time-aggregation window, in place of timeGranularity.duration: positive, dividing an hour, and at most 30 minutes. Null \u003d timeGranularity.duration.",
+                "example": "PT20.345S",
+                "format": "ISO-8601",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        ],
+        "description": "Rolls the metrics it takes up across a cohort\u0027s objects: one output per cohort and window.",
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
       "HeadSamplingFilter": {
         "description": "Predicate that determines whether a span matches a head sampling rule.",
         "discriminator": {
@@ -7753,37 +8025,6 @@
         "required": [
           "name",
           "value"
-        ],
-        "type": "object"
-      },
-      "HostMetadataReporting": {
-        "description": "Keep a vendor\u0027s host inventory in sync with the metric reduction.",
-        "properties": {
-          "aggregateCohortHosts": {
-            "default": false,
-            "description": "Collapse each cohort\u0027s real hosts into a single virtual cohort host.",
-            "type": "boolean"
-          },
-          "integrationIds": {
-            "default": [],
-            "description": "Datadog integration IDs that receive the reported host metadata.",
-            "items": {
-              "description": "Datadog integration IDs that receive the reported host metadata.",
-              "type": "string"
-            },
-            "maxItems": 2147483647,
-            "minItems": 1,
-            "type": "array",
-            "uniqueItems": true
-          },
-          "rehydrateAnomalousHosts": {
-            "default": false,
-            "description": "While an object is anomalous, re-report its real host to Datadog.",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "integrationIds"
         ],
         "type": "object"
       },
@@ -12626,13 +12867,13 @@
           },
           "groupBy": {
             "default": [],
-            "description": "Group-by tokens: \u0027object\u0027, \u0027cohort\u0027, \u0027series\u0027, or a level-prefixed attribute path. Empty list \u003d global aggregation.",
+            "description": "Group-by tokens: \u0027object\u0027, \u0027cohort\u0027, \u0027series\u0027, or a tag key, read from a series\u0027 merged attributes. Those three names are the tokens, never tags, and a key can\u0027t share a name with one of the aggregation\u0027s columns (its as, or val). Empty list \u003d global aggregation.",
             "example": [
               "object",
               "cohort"
             ],
             "items": {
-              "description": "Group-by tokens: \u0027object\u0027, \u0027cohort\u0027, \u0027series\u0027, or a level-prefixed attribute path. Empty list \u003d global aggregation.",
+              "description": "Group-by tokens: \u0027object\u0027, \u0027cohort\u0027, \u0027series\u0027, or a tag key, read from a series\u0027 merged attributes. Those three names are the tokens, never tags, and a key can\u0027t share a name with one of the aggregation\u0027s columns (its as, or val). Empty list \u003d global aggregation.",
               "example": "[\"object\",\"cohort\"]",
               "type": "string"
             },
@@ -12671,42 +12912,13 @@
         },
         "type": "object"
       },
-      "MetricDataRawIcebergTableSink": {
-        "properties": {
-          "datasetId": {
-            "description": "The id of the dataset to write to",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
-          },
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "type": {
-            "description": "Writes MetricData (one row per datapoint, attributes auto-flattened to columns) to an Iceberg table.",
-            "enum": [
-              "metricdata-raw-iceberg-table-sink"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "datasetId",
-          "name",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sinks"
-        ]
-      },
       "MetricEventPredicate": {
+        "description": "Metric names and a tag filter selecting the series.",
         "properties": {
           "filterTags": {
             "additionalProperties": {
               "default": {},
-              "description": "The set of tags to query for. If unspecified, all tags are queried.",
+              "description": "Legacy: the set of tags to query for, read only by the pre-v3 Metrics page\u0027s query. Analytics queries and metrics backfills refuse it; they filter tags with query.",
               "example": {
                 "env": [
                   "prod"
@@ -12717,7 +12929,7 @@
               },
               "items": {
                 "default": "{}",
-                "description": "The set of tags to query for. If unspecified, all tags are queried.",
+                "description": "Legacy: the set of tags to query for, read only by the pre-v3 Metrics page\u0027s query. Analytics queries and metrics backfills refuse it; they filter tags with query.",
                 "example": "{\"service\":[\"my-app\"],\"env\":[\"prod\"]}",
                 "type": "string"
               },
@@ -12725,7 +12937,7 @@
               "uniqueItems": true
             },
             "default": {},
-            "description": "The set of tags to query for. If unspecified, all tags are queried.",
+            "description": "Legacy: the set of tags to query for, read only by the pre-v3 Metrics page\u0027s query. Analytics queries and metrics backfills refuse it; they filter tags with query.",
             "example": {
               "env": [
                 "prod"
@@ -12753,6 +12965,9 @@
             "type": "array"
           },
           "query": {
+            "default": "",
+            "description": "Datadog search syntax over the named metrics\u0027 tags. Blank keeps every series.",
+            "example": "env:prod -role:canary",
             "type": "string"
           },
           "type": {
@@ -12765,31 +12980,30 @@
         },
         "required": [
           "metricNames",
-          "query",
           "type"
         ],
         "type": "object"
       },
       "MetricNameFilter": {
-        "description": "Glob-pattern filter on metric names.",
+        "description": "Filter on metric names: globs, or RE2 regexes after r/ that match the whole name.",
         "properties": {
           "empty": {
             "type": "boolean"
           },
           "excludes": {
             "default": [],
-            "description": "Glob patterns to exclude. Precedence over includes.",
+            "description": "Patterns to exclude, globs or r/ regexes. Precedence over includes.",
             "items": {
-              "description": "Glob patterns to exclude. Precedence over includes.",
+              "description": "Patterns to exclude, globs or r/ regexes. Precedence over includes.",
               "type": "string"
             },
             "type": "array"
           },
           "includes": {
             "default": [],
-            "description": "Glob patterns to include. Empty list matches all.",
+            "description": "Patterns to include, globs or r/ regexes. Empty list matches all.",
             "items": {
-              "description": "Glob patterns to include. Empty list matches all.",
+              "description": "Patterns to include, globs or r/ regexes. Empty list matches all.",
               "type": "string"
             },
             "type": "array"
@@ -12798,7 +13012,7 @@
         "type": "object"
       },
       "MetricReducer": {
-        "description": "Reduces metric volume by aggregating per-object time series into per-cohort summaries while preserving the original signal when anomaly rules fire. Series that don\u0027t belong to a monitored object flow through unchanged; series matching a drop rule are discarded.",
+        "description": "Reduces metric volume by aggregating per-object time series into per-cohort summaries while preserving the original signal when anomaly rules fire. Series that don\u0027t belong to a monitored object flow through unchanged; series matching a drop rule never go out. Anomaly rules read every series they match, dropped ones included.",
         "properties": {
           "anomalies": {
             "default": [],
@@ -12811,12 +13025,9 @@
           "anomalyActions": {
             "$ref": "#/components/schemas/AnomalyActions"
           },
-          "cohorts": {
-            "$ref": "#/components/schemas/CohortsConfig"
-          },
           "dropRules": {
             "default": [],
-            "description": "Drop rules — matching series are discarded outright.",
+            "description": "Drop rules: matching series never go out, even while anomalous. Anomaly rules still read them.",
             "items": {
               "$ref": "#/components/schemas/DropRule"
             },
@@ -12824,13 +13035,27 @@
           },
           "emitInterval": {
             "default": "PT20S",
-            "description": "How often the reducer flushes cohort-level output.",
+            "description": "Sets how long the reducer keeps an idle key\u0027s cohort state: four times this, or the time granularity plus this when that\u0027s longer. It doesn\u0027t change when rules emit.",
             "example": "PT20.345S",
             "format": "ISO-8601",
             "type": "string"
           },
-          "hostMetadata": {
-            "$ref": "#/components/schemas/HostMetadataReporting"
+          "groupBy": {
+            "$ref": "#/components/schemas/GroupByConfig"
+          },
+          "lateDataMinWait": {
+            "default": "PT30S",
+            "description": "Minimum time to keep aggregation state in memory for fast updates due to late data.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "lateDataNumWindows": {
+            "default": 4,
+            "description": "Number of aggregation windows to keep in memory in case of late data.",
+            "example": 4,
+            "format": "int32",
+            "type": "integer"
           },
           "name": {
             "example": "operation_name",
@@ -12840,9 +13065,30 @@
           "objects": {
             "$ref": "#/components/schemas/ObjectsConfig"
           },
+          "recomputeHorizon": {
+            "description": "How far back a window that a very late point lands in is marked in the data lake for a recompute, by processing time: the longest of the pipeline\u0027s sinks\u0027 horizons, at most a day. Unset, nothing is marked and such points stay in the lake only.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "rules": {
+            "default": [],
+            "description": "Ordered processing rules (first-match-wins).",
+            "items": {
+              "$ref": "#/components/schemas/ProcessingRule"
+            },
+            "type": "array"
+          },
+          "softLateDeadline": {
+            "default": "PT2S",
+            "description": "How long to wait for late points before a window\u0027s first send.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
           "spaceAggOverrides": {
             "additionalProperties": {
-              "$ref": "#/components/schemas/AggType"
+              "$ref": "#/components/schemas/MetricsOverrideFunction"
             },
             "default": {},
             "description": "Per-metric-name overrides for space (cross-object) aggregation.",
@@ -12863,16 +13109,122 @@
           }
         },
         "required": [
-          "emitInterval",
           "name",
           "objects",
-          "timeGranularity",
           "type"
         ],
         "type": "object",
         "x-tags": [
           "Transforms"
         ]
+      },
+      "MetricRename": {
+        "description": "A metric rename: a metric name, or a regex after r/, and the new name.",
+        "properties": {
+          "pattern": {
+            "description": "A metric name, matched exactly, or an RE2 regex after r/ matched against the whole name.",
+            "example": "r/app\\.(web|api)\\.count",
+            "type": "string"
+          },
+          "replacement": {
+            "description": "The new name. $1 or ${name} insert a regex\u0027s groups, $0 the whole name, and \\$ is a literal $.",
+            "example": "app.$1.total",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern",
+          "replacement"
+        ],
+        "type": "object"
+      },
+      "MetricsBackfillSource": {
+        "properties": {
+          "datasetId": {
+            "description": "The ID of the dataset whose metrics are backfilled.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of the window, inclusive, a whole millisecond.",
+            "example": "2023-01-01T01:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/MetricEventPredicate"
+          },
+          "start": {
+            "description": "Start of the window, inclusive, a whole millisecond.",
+            "example": "2023-01-01T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "description": "Backfills a dataset\u0027s metrics for a window and a metrics query, as the live path sends them.",
+            "enum": [
+              "metrics-backfill-source"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "name",
+          "query",
+          "start",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sources"
+        ]
+      },
+      "MetricsBackfillTemplateInput": {
+        "description": "Schema for the metrics backfill job graph.",
+        "properties": {
+          "datasetId": {
+            "description": "Dataset whose metrics are backfilled.",
+            "pattern": "^[0-9a-z]{1,13}$",
+            "type": "string"
+          },
+          "end": {
+            "description": "End of the window, inclusive, a whole millisecond.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/MetricEventPredicate"
+          },
+          "sinks": {
+            "default": [],
+            "description": "The v3 metrics sinks the backfilled series go to.",
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "type": "array"
+          },
+          "start": {
+            "description": "Start of the window, inclusive, a whole millisecond.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "datasetId",
+          "end",
+          "query",
+          "sinks",
+          "start"
+        ],
+        "title": "Inputs Schema",
+        "type": "object"
       },
       "MetricsIcebergTableSink": {
         "properties": {
@@ -12991,6 +13343,175 @@
           "Sources"
         ]
       },
+      "MetricsLakeSink": {
+        "properties": {
+          "datasetId": {
+            "description": "The id of the dataset whose metrics lake tables it writes.",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "recomputeMarkers": {
+            "default": false,
+            "description": "Also write the recompute markers of very late windows, from a markers input. A metrics reducer pipeline with recompute on turns it on.",
+            "type": "boolean"
+          },
+          "type": {
+            "description": "Writes every raw point of a v3 metrics source into its dataset\u0027s metrics lake.",
+            "enum": [
+              "metrics-lake-sink"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "datasetId",
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sinks"
+        ]
+      },
+      "MetricsOverrideFunction": {
+        "description": "A function a per-metric setting takes in place of the metric type\u0027s default aggregation. There\u0027s no percentile: a rule that rolls up over time takes one in its aggregations, with its rank, for the metrics it matches.",
+        "enum": [
+          "SUM",
+          "AVG",
+          "LATEST",
+          "MIN",
+          "MAX"
+        ],
+        "example": "{\"system.cpu.utilization\":\"AVG\"}",
+        "type": "string"
+      },
+      "MetricsReducerTemplateInput": {
+        "description": "Schema for the metrics reducer job graph.",
+        "properties": {
+          "anomalies": {
+            "description": "The reducer\u0027s anomaly rules, as given.",
+            "items": {
+              "$ref": "#/components/schemas/AnomalyConfig"
+            },
+            "type": "array"
+          },
+          "anomalyActions": {
+            "$ref": "#/components/schemas/AnomalyActions"
+          },
+          "datasetId": {
+            "description": "The dataset whose metrics lake keeps every raw point at full granularity, besides the sinks. Absent, the pipeline keeps no lake.",
+            "pattern": "^[0-9a-z]{1,13}$",
+            "type": "string"
+          },
+          "dropRules": {
+            "description": "The reducer\u0027s drop rules, as given.",
+            "items": {
+              "$ref": "#/components/schemas/DropRule"
+            },
+            "type": "array"
+          },
+          "granularity": {
+            "description": "The time-aggregation window of every rule. Absent, the reducer\u0027s default applies.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          },
+          "graphOverrides": {
+            "$ref": "#/components/schemas/MetricsTemplateGraphOverrides"
+          },
+          "groupByKeys": {
+            "description": "The tag keys the reducer\u0027s rules group by, such as env or service, each matched as written: a series\u0027 own tag over its host\u0027s, and resource.type is a tag of that name. The source makes each key identifying, so the two can\u0027t disagree. Exact keys, no globs or colons. Absent means [\"env\"]; empty means none. An object key (objectKeys) can\u0027t be one: the reducer refuses it. Another key with one value per object, such as an IP or a node name, makes every group one object. The reducer\u0027s groupBy.keys, as its refusals name it.",
+            "example": [
+              "env",
+              "service"
+            ],
+            "items": {
+              "description": "The tag keys the reducer\u0027s rules group by, such as env or service, each matched as written: a series\u0027 own tag over its host\u0027s, and resource.type is a tag of that name. The source makes each key identifying, so the two can\u0027t disagree. Exact keys, no globs or colons. Absent means [\"env\"]; empty means none. An object key (objectKeys) can\u0027t be one: the reducer refuses it. Another key with one value per object, such as an IP or a node name, makes every group one object. The reducer\u0027s groupBy.keys, as its refusals name it.",
+              "example": "[\"env\",\"service\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "lateMetrics": {
+            "$ref": "#/components/schemas/MetricsTemplateLateMetrics"
+          },
+          "objectKeys": {
+            "description": "The tag keys that identify one object, such as host or container_id, each matched as written, a series\u0027 own tag over its host\u0027s. Objects live within the Group By groups: a rule that aggregates across objects combines a group\u0027s objects. The source makes each key identifying. Exact keys, no globs or colons, and none of the groupByKeys. A series missing one of them isn\u0027t an object: a time rollup still rolls it up as itself, and a rule that aggregates across objects takes only series carrying all of them. Absent means [\"host\"]. The reducer\u0027s objects.identifyingAttributes, as its refusals name it.",
+            "example": [
+              "container_id"
+            ],
+            "items": {
+              "description": "The tag keys that identify one object, such as host or container_id, each matched as written, a series\u0027 own tag over its host\u0027s. Objects live within the Group By groups: a rule that aggregates across objects combines a group\u0027s objects. The source makes each key identifying. Exact keys, no globs or colons, and none of the groupByKeys. A series missing one of them isn\u0027t an object: a time rollup still rolls it up as itself, and a rule that aggregates across objects takes only series carrying all of them. Absent means [\"host\"]. The reducer\u0027s objects.identifyingAttributes, as its refusals name it.",
+              "example": "[\"container_id\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rules": {
+            "description": "The reducer\u0027s rules, as it takes them, in order: a series takes the first rule its selectors match, and a series no rule matches passes through unreduced. A time-rollup rule keeps each series\u0027 own identity. Each rule selects something (a metric name pattern, * for every metric, an exclusion or a tag), and a rollup\u0027s functions are a rule\u0027s (MetricsRuleFunction). Absent, the reducer only drops and passes series through. The refusals name them rules[0], [1] and so on, in this order, or rules[\u003cname\u003e].",
+            "items": {
+              "$ref": "#/components/schemas/ProcessingRule"
+            },
+            "type": "array"
+          },
+          "sinks": {
+            "description": "Where the reducer\u0027s outputs go: at least one sink.",
+            "items": {
+              "$ref": "#/components/schemas/MetricsTemplateSink"
+            },
+            "maxItems": 2147483647,
+            "minItems": 1,
+            "type": "array"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MetricsTemplateSource"
+          },
+          "spaceAggOverrides": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MetricsOverrideFunction"
+            },
+            "description": "Per-metric-name aggregations across objects: one of MetricsOverrideFunction in place of the metric type\u0027s default for combining a group\u0027s objects. A rule that aggregates across objects uses it where its aggregation is DEFAULT, and a function it names takes precedence. Exact metric names. Absent, every metric keeps its default. The reducer\u0027s spaceAggOverrides, as its refusals name it.",
+            "example": {
+              "system.mem.used": "SUM"
+            },
+            "type": "object"
+          },
+          "timeAggOverrides": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MetricsOverrideFunction"
+            },
+            "description": "Per-metric-name aggregations over time: one of MetricsOverrideFunction in place of the metric type\u0027s default aggregation within a window. A time-only rule uses it where its aggregation is DEFAULT, and a function it names takes precedence. An rule that aggregates across objects always aggregates each object over time with it first. Exact metric names. Absent, every metric keeps its default. The reducer\u0027s timeGranularity.aggFnOverrides, as its refusals name it.",
+            "example": {
+              "system.cpu.utilization": "LATEST"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "sinks",
+          "source"
+        ],
+        "title": "Inputs Schema",
+        "type": "object"
+      },
+      "MetricsRuleFunction": {
+        "description": "A function an aggregation takes. DEFAULT is each metric\u0027s own function: its per-metric setting, else its type\u0027s default. PERCENTILE takes a rank, then optionally a relative accuracy and a maximum bin count.",
+        "enum": [
+          "DEFAULT",
+          "SUM",
+          "AVG",
+          "LATEST",
+          "MAX",
+          "MIN",
+          "PERCENTILE"
+        ],
+        "type": "string"
+      },
       "MetricsSynchronousSink": {
         "properties": {
           "name": {
@@ -13014,6 +13535,165 @@
         "x-tags": [
           "Sinks"
         ]
+      },
+      "MetricsTemplateGraphEdgeOverrides": {
+        "description": "Edges to remove, then edges to add, each as from[:port] -\u003e to[:port].",
+        "properties": {
+          "add": {
+            "description": "Edges to add, after the removals.",
+            "example": [
+              "metric_reducer_0ddagents0001 -\u003e stub_sink"
+            ],
+            "items": {
+              "description": "Edges to add, after the removals.",
+              "example": "[\"metric_reducer_0ddagents0001 -\u003e stub_sink\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "remove": {
+            "description": "Edges to remove, each one the graph has; ports default to output and input, and spacing doesn\u0027t matter.",
+            "example": [
+              "metric_reducer_0ddagents0001 -\u003e metrics_sink_0ddagents0001"
+            ],
+            "items": {
+              "description": "Edges to remove, each one the graph has; ports default to output and input, and spacing doesn\u0027t matter.",
+              "example": "[\"metric_reducer_0ddagents0001 -\u003e metrics_sink_0ddagents0001\"]",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "MetricsTemplateGraphOverrides": {
+        "description": "A patch on the job graph the template builds, applied after it\u0027s built. Vertex removals run first, then vertex patches and additions, then edge removals, then edge additions. No value anywhere in it may be null: a stored job drops nulls.",
+        "properties": {
+          "edges": {
+            "$ref": "#/components/schemas/MetricsTemplateGraphEdgeOverrides"
+          },
+          "removeVertices": {
+            "description": "Operations to remove by name, with every edge to or from them.",
+            "items": {
+              "description": "Operations to remove by name, with every edge to or from them.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "vertices": {
+            "additionalProperties": {
+              "description": "Operations by name: the template\u0027s own names, without the template operation\u0027s prefix. A name the graph has takes the object as a JSON merge patch: an object merges into the operation\u0027s at each level, and any other value replaces the field. A patch may not set name. A name the graph doesn\u0027t have adds the object, which needs a type, as a new operation of that name.",
+              "example": {
+                "metrics_sink_0ddagents0001": {
+                  "hostMetadata": false
+                }
+              },
+              "type": "object"
+            },
+            "description": "Operations by name: the template\u0027s own names, without the template operation\u0027s prefix. A name the graph has takes the object as a JSON merge patch: an object merges into the operation\u0027s at each level, and any other value replaces the field. A patch may not set name. A name the graph doesn\u0027t have adds the object, which needs a type, as a new operation of that name.",
+            "example": {
+              "metrics_sink_0ddagents0001": {
+                "hostMetadata": false
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "MetricsTemplateLateMetrics": {
+        "description": "How the pipeline treats late points.",
+        "properties": {
+          "recompute": {
+            "description": "Recompute a window that a point arriving past the reducer\u0027s hold lands in, from the pipeline\u0027s dataset, and send it again: the reducer marks such windows in the data lake. Off, or without a dataset, such points stay in the lake only. Absent, on.",
+            "example": true,
+            "type": "boolean"
+          },
+          "softLateDeadline": {
+            "description": "How long after a window ends the reducer first sends it, and how often it re-sends a window a late point changed: the source\u0027s wait for late points and the reducer\u0027s softLateDeadline, both. It must be positive and under the reducer\u0027s lateDataMinWait, which the template sets to 30 s. Absent, 2 s.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MetricsTemplateSink": {
+        "description": "A destination for the reducer\u0027s outputs: an integration.",
+        "properties": {
+          "integrationId": {
+            "description": "The integration the outputs are sent to.",
+            "pattern": "^[0-9a-z]{1,13}$",
+            "type": "string"
+          },
+          "integrationType": {
+            "description": "The integration\u0027s type, such as datadog, which picks the sink operation. A type with no metrics sink yet is refused.",
+            "example": "datadog",
+            "type": "string"
+          },
+          "maxLateData": {
+            "description": "How late a point the sink still sends, by when the point goes out; an older one is skipped. Each sink type has its default and least: a Datadog sink\u0027s is 55 minutes, since Datadog drops points over an hour old; set it longer when the metrics have Datadog\u0027s historical ingestion. The reducer recomputes a very late window within the longest sink\u0027s, less 5 minutes, up to a day.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
+          }
+        },
+        "required": [
+          "integrationId",
+          "integrationType"
+        ],
+        "type": "object"
+      },
+      "MetricsTemplateSource": {
+        "description": "The pipeline\u0027s metrics source: an integration and the source\u0027s settings.",
+        "properties": {
+          "datadog": {
+            "$ref": "#/components/schemas/DatadogTemplateSourceSettings"
+          },
+          "identifyingKeys": {
+            "description": "Attribute keys that identify a series where they\u0027d otherwise describe it: exact keys or globs with *, without a level. The template adds each group-by key\u0027s attribute. Absent, the source\u0027s own default applies, such as env for datadog; a list replaces it, and [] means only the group-by keys.",
+            "example": [
+              "env",
+              "kube_cluster_name"
+            ],
+            "items": {
+              "description": "Attribute keys that identify a series where they\u0027d otherwise describe it: exact keys or globs with *, without a level. The template adds each group-by key\u0027s attribute. Absent, the source\u0027s own default applies, such as env for datadog; a list replaces it, and [] means only the group-by keys.",
+              "example": "[\"env\",\"kube_cluster_name\"]",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "integrationId": {
+            "description": "The integration the metrics arrive through.",
+            "pattern": "^[0-9a-z]{1,13}$",
+            "type": "string"
+          },
+          "integrationType": {
+            "description": "The integration\u0027s type, such as datadog, which picks the source operation. A type with no metrics source yet is refused.",
+            "example": "datadog",
+            "type": "string"
+          },
+          "nonIdentifyingKeys": {
+            "description": "Attribute keys that describe a series without identifying it: exact keys or globs with *, without a level. An identifying key, a group-by key\u0027s included, stays identifying even when it matches one.",
+            "items": {
+              "description": "Attribute keys that describe a series without identifying it: exact keys or globs with *, without a level. An identifying key, a group-by key\u0027s included, stays identifying even when it matches one.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "renames": {
+            "description": "Metric renames, in order: the first that matches a metric\u0027s whole name, a plain name exactly or an RE2 regex after r/, renames it to its new name, where $1 or ${name} insert the regex\u0027s groups. Every later step sees only the new name. Absent or empty renames none. A change restarts the pipeline.",
+            "items": {
+              "$ref": "#/components/schemas/MetricRename"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "integrationId",
+          "integrationType"
+        ],
+        "type": "object"
       },
       "MinAttributesMergeStrategy": {
         "properties": {
@@ -13354,17 +14034,21 @@
         "type": "object"
       },
       "ObjectMetricsPassthrough": {
-        "description": "When an object is anomalous, de-aggregate its raw datapoints alongside the per-cohort aggregate output, under a suffixed metric name.",
+        "description": "When an object is anomalous, send its raw datapoints, by default under their own names and in place of its share of the aggregates.",
         "properties": {
           "enabled": {
             "default": true,
             "description": "Whether anomalous objects are de-aggregated (passed through).",
             "type": "boolean"
           },
+          "excludeFromAggregates": {
+            "default": true,
+            "description": "Whether an anomalous object\u0027s raw datapoints replace its share of the rollups and aggregates (true), or go out as a copy beside them (false). Cumulative series stay in their aggregates.",
+            "type": "boolean"
+          },
           "metricSuffix": {
-            "default": ".detail",
-            "description": "Suffix appended to passthrough emits\u0027 metric names (e.g. \u0027cpu.usage\u0027 becomes \u0027cpu.usage.detail\u0027). May be empty to keep the original metric name. Must not collide with any aggregation \u0027as\u0027 suffix on the same cohort calc.",
-            "example": ".detail",
+            "default": "",
+            "description": "Suffix appended to passthrough emits\u0027 metric names (e.g. \u0027.detail\u0027 makes \u0027cpu.usage\u0027 \u0027cpu.usage.detail\u0027). Empty by default, keeping the original metric name.",
             "type": "string"
           }
         },
@@ -13378,31 +14062,17 @@
         "properties": {
           "identifyingAttributes": {
             "default": [],
-            "description": "Level-prefixed attribute keys that identify an object. Each key must have a \u0027resource.\u0027, \u0027scope.\u0027, or \u0027series.\u0027 prefix.",
+            "description": "Tag keys that identify an object, such as host. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A rule that aggregates across objects writes each where the series had it with the cohort\u0027s id, such as cohort_service-api (see groupBy.keys).",
             "example": [
-              "resource.host.id"
+              "host"
             ],
             "items": {
-              "description": "Level-prefixed attribute keys that identify an object. Each key must have a \u0027resource.\u0027, \u0027scope.\u0027, or \u0027series.\u0027 prefix.",
-              "example": "[\"resource.host.id\"]",
+              "description": "Tag keys that identify an object, such as host. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A rule that aggregates across objects writes each where the series had it with the cohort\u0027s id, such as cohort_service-api (see groupBy.keys).",
+              "example": "[\"host\"]",
               "type": "string"
             },
             "maxItems": 2147483647,
             "minItems": 1,
-            "type": "array",
-            "uniqueItems": true
-          },
-          "metadataAttributes": {
-            "default": [],
-            "description": "Level-prefixed attribute keys that describe an object but may change.",
-            "example": [
-              "resource.os.version"
-            ],
-            "items": {
-              "description": "Level-prefixed attribute keys that describe an object but may change.",
-              "example": "[\"resource.os.version\"]",
-              "type": "string"
-            },
             "type": "array",
             "uniqueItems": true
           },
@@ -13473,6 +14143,7 @@
             "datadog-log-agent-source": "#/components/schemas/DatadogLogAgentSource",
             "datadog-log-cloud-source": "#/components/schemas/DatadogLogCloudSource",
             "datadog-log-sink": "#/components/schemas/DatadogLogSink",
+            "datadog-metric-agent-source-v3": "#/components/schemas/DatadogMetricsAgentSource",
             "datadog-metrics-sink": "#/components/schemas/DatadogMetricsSink",
             "datadog-stats-sink": "#/components/schemas/DatadogStatsSink",
             "datadog-trace-agent-source": "#/components/schemas/DatadogTraceAgentSource",
@@ -13505,9 +14176,10 @@
             "logs-values-source": "#/components/schemas/LogsValuesSource",
             "masking-operator": "#/components/schemas/MaskingOperator",
             "metric-reducer": "#/components/schemas/MetricReducer",
-            "metricdata-raw-iceberg-table-sink": "#/components/schemas/MetricDataRawIcebergTableSink",
+            "metrics-backfill-source": "#/components/schemas/MetricsBackfillSource",
             "metrics-iceberg-table-sink": "#/components/schemas/MetricsIcebergTableSink",
             "metrics-iceberg-table-source": "#/components/schemas/MetricsIcebergTableSource",
+            "metrics-lake-sink": "#/components/schemas/MetricsLakeSink",
             "metrics-sync-sink": "#/components/schemas/MetricsSynchronousSink",
             "multi-grok-parser": "#/components/schemas/MultiGrokParser",
             "newrelic-log-agent-source": "#/components/schemas/NewRelicLogAgentSource",
@@ -13636,9 +14308,6 @@
             "$ref": "#/components/schemas/MetricsIcebergTableSink"
           },
           {
-            "$ref": "#/components/schemas/MetricDataRawIcebergTableSink"
-          },
-          {
             "$ref": "#/components/schemas/DatadogLogCloudSource"
           },
           {
@@ -13682,6 +14351,9 @@
           },
           {
             "$ref": "#/components/schemas/LogsBackfillFlinkSource"
+          },
+          {
+            "$ref": "#/components/schemas/MetricsBackfillSource"
           },
           {
             "$ref": "#/components/schemas/LogsRuleEngine"
@@ -13781,6 +14453,12 @@
           },
           {
             "$ref": "#/components/schemas/MetricReducer"
+          },
+          {
+            "$ref": "#/components/schemas/DatadogMetricsAgentSource"
+          },
+          {
+            "$ref": "#/components/schemas/MetricsLakeSink"
           },
           {
             "$ref": "#/components/schemas/DatadogStatsSink"
@@ -14380,7 +15058,7 @@
             "type": "integer"
           },
           "column": {
-            "description": "Built-in column (service/host) or a promoted tag key to partition by.",
+            "description": "Built-in column (service/host) or a promoted tag key to partition by; metric_hash for metrics_points, metric_name for metrics_series.",
             "type": "string"
           }
         },
@@ -14411,6 +15089,18 @@
       },
       "PassthroughNode": {
         "description": "Terminal — forwards every event to the chain\u0027s downstream pipeline step. UI label is stage-derived (e.g. \"Send to Reducer\").",
+        "type": "object"
+      },
+      "PassthroughRule": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProcessingRule"
+          }
+        ],
+        "description": "Sends the metrics it takes raw, once: no rollup. Anomaly rules still read them.",
+        "required": [
+          "name"
+        ],
         "type": "object"
       },
       "PatternLookupIcebergTableSink": {
@@ -15121,6 +15811,36 @@
         },
         "type": "object"
       },
+      "ProcessingRule": {
+        "description": "One processing rule: the metrics it takes and what it does with them.",
+        "discriminator": {
+          "mapping": {
+            "group-by": "#/components/schemas/GroupByRule",
+            "passthrough": "#/components/schemas/PassthroughRule",
+            "time-rollup": "#/components/schemas/TimeRollupRule"
+          },
+          "propertyName": "type"
+        },
+        "properties": {
+          "name": {
+            "description": "The rule\u0027s identity, unique among the rules: the reducer keys an across-objects rule\u0027s state, and every rule\u0027s matched flag, by it, so an across-objects rule keeps its open windows when rules are added, removed or reordered, and renaming it is removing it and adding another. A time rollup\u0027s windows are kept by its window and functions instead. Letters, digits, _ and -, at most 64.",
+            "example": "o-k3x9f2qa",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "type": "string"
+          },
+          "selectors": {
+            "$ref": "#/components/schemas/FilterPrimitive"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object"
+      },
       "PromotedAttribute": {
         "description": "Attribute paths the table indexes, with the policy applied to each.",
         "properties": {
@@ -15516,6 +16236,7 @@
                 "AUTH0_SSO_CONNECTION",
                 "TRINO_QUERY_ENGINE",
                 "CHAT_TOOL_DETAILS",
+                "METRICS_PIPELINES",
                 "UNKNOWN"
               ],
               "type": "string"
@@ -19431,17 +20152,7 @@
             "$ref": "#/components/schemas/EventPredicate"
           },
           "table": {
-            "description": "The dataset\u0027s table the alias reads: `logs_raw` for logs, `spans_raw` for traces.",
-            "enum": [
-              "logs_raw",
-              "logs_dedup",
-              "logs_pattern_lookup",
-              "metrics_raw",
-              "metricdata_raw",
-              "spans_raw",
-              "spans_dedup"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/DatasetTable"
           }
         },
         "required": [
@@ -20012,6 +20723,14 @@
           },
           "predicate": {
             "$ref": "#/components/schemas/EventPredicate"
+          },
+          "rows": {
+            "description": "What a row of a metrics_series query is: SERIES, the default, a row per series version; TAG, a row per tag of each version, which adds the tag_key, tag_value, tag_level and tag_identifying columns. Only a metrics_series query takes TAG.",
+            "enum": [
+              "SERIES",
+              "TAG"
+            ],
+            "type": "string"
           },
           "select": {
             "description": "Expressions returned by the query.",
@@ -21328,7 +22047,7 @@
         "properties": {
           "aggFnOverrides": {
             "additionalProperties": {
-              "$ref": "#/components/schemas/AggType"
+              "$ref": "#/components/schemas/MetricsOverrideFunction"
             },
             "default": {},
             "description": "Per-metric-name overrides for time aggregation.",
@@ -21345,9 +22064,6 @@
             "type": "string"
           }
         },
-        "required": [
-          "duration"
-        ],
         "type": "object"
       },
       "TimePartitionTransform": {
@@ -21373,6 +22089,37 @@
         ],
         "required": [
           "partitionBy"
+        ],
+        "type": "object"
+      },
+      "TimeRollupRule": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProcessingRule"
+          },
+          {
+            "properties": {
+              "aggregations": {
+                "default": [],
+                "description": "Aggregations to emit. Null \u003d [{ fn: DEFAULT }].",
+                "items": {
+                  "$ref": "#/components/schemas/AggregationDecl"
+                },
+                "type": "array"
+              },
+              "window": {
+                "description": "This entry\u0027s time-aggregation window, in place of timeGranularity.duration: positive, dividing an hour, and at most 30 minutes. Null \u003d timeGranularity.duration.",
+                "example": "PT20.345S",
+                "format": "ISO-8601",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        ],
+        "description": "Rolls each metric it takes up over time on its own, keeping its identity: no cohort collapse.",
+        "required": [
+          "name"
         ],
         "type": "object"
       },
@@ -27815,7 +28562,7 @@
         ]
       },
       "put": {
-        "description": "Replaces the configuration override for one of the dataset\u0027s tables. Applies the resulting schema and partition-spec changes to the live Iceberg table. 409 if any pipeline currently references the dataset.",
+        "description": "Replaces the configuration override for one of the dataset\u0027s tables. Applies the resulting schema and partition-spec changes to the live Iceberg table. 409 while a linked pipeline is active (a stopped one doesn\u0027t block). metrics_points and metrics_series take one partition field, a bucket count of metric_hash or metric_name, a power of two, which takes effect when a pipeline next starts.",
         "operationId": "putTableConfig",
         "parameters": [
           {
@@ -37135,7 +37882,7 @@
     },
     "/v1/jobs/backfills": {
       "post": {
-        "description": "Creates a logs or spans backfill batch job from backfill parameters (time window, query, vendor sinks, and optional type-specific fields). The `dataType` selects the built-in logs or spans template. This is an asynchronous batch job: the response returns an identifier (field: `id`) that can be used to query the status of the job using the `GET` jobs endpoint. The server builds the backfill job graph from the parameters, so callers do not assemble it themselves.",
+        "description": "Creates a logs, spans or metrics backfill batch job from backfill parameters (time window, query, vendor sinks, and optional type-specific fields). The `dataType` selects the built-in logs, spans or metrics template; a metrics backfill needs metrics pipelines enabled. This is an asynchronous batch job: the response returns an identifier (field: `id`) that can be used to query the status of the job using the `GET` jobs endpoint. The server builds the backfill job graph from the parameters, so callers do not assemble it themselves.",
         "operationId": "submitBackfillJob",
         "requestBody": {
           "content": {
@@ -38417,15 +39164,23 @@
     },
     "/v1/query/analytics-vocabulary": {
       "get": {
-        "description": "Returns parser-approved expression functions and logical log fields. With a dataset, includes that dataset\u0027s promoted logs_raw tag keys.",
+        "description": "Returns parser-approved expression functions and the logical fields of the table a query reads: logs_raw, the default, metrics_points or metrics_series. With a dataset, includes that dataset\u0027s scan budget ceiling.",
         "operationId": "getAnalyticsVocabulary",
         "parameters": [
           {
-            "description": "Dataset whose promoted logs_raw tags should be included.",
+            "description": "Dataset whose scan budget ceiling should be included.",
             "in": "query",
             "name": "datasetId",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "description": "Table the query reads: logs_raw, the default, metrics_points or metrics_series.",
+            "in": "query",
+            "name": "table",
+            "schema": {
+              "$ref": "#/components/schemas/DatasetTable"
             }
           }
         ],
