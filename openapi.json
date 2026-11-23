@@ -284,7 +284,7 @@
             "type": "string"
           },
           "churnHoldPerMinute": {
-            "description": "Signals per minute, averaged over 15 minutes, at or above which this agent's runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.",
+            "description": "Signals per minute, averaged over 15 minutes, at or above which this agent\u0027s runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.",
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -427,7 +427,7 @@
             "type": "string"
           },
           "churnHoldPerMinute": {
-            "description": "Signals per minute, averaged over 15 minutes, at or above which this agent's runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.",
+            "description": "Signals per minute, averaged over 15 minutes, at or above which this agent\u0027s runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.",
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -516,7 +516,7 @@
             "type": "boolean"
           },
           "runsPerHourOutsideChurnMode": {
-            "description": "For the churn specialist only: while none of the organization's pipelines is in churn mode, it starts a run only if it started fewer than this in the last hour, runs started in churn mode included. Unset: 10. Other agents have none.",
+            "description": "For the churn specialist only: while none of the organization\u0027s pipelines is in churn mode, it starts a run only if it started fewer than this in the last hour, runs started in churn mode included. Unset: 10. Other agents have none.",
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -566,7 +566,7 @@
             "type": "string"
           },
           "churnHoldPerMinute": {
-            "description": "Signals per minute, averaged over 15 minutes, at or above which this agent's runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.",
+            "description": "Signals per minute, averaged over 15 minutes, at or above which this agent\u0027s runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.",
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -658,7 +658,7 @@
             "type": "boolean"
           },
           "runsPerHourOutsideChurnMode": {
-            "description": "For the churn specialist only: while none of the organization's pipelines is in churn mode, it starts a run only if it started fewer than this in the last hour, runs started in churn mode included. Unset: 10. Other agents have none.",
+            "description": "For the churn specialist only: while none of the organization\u0027s pipelines is in churn mode, it starts a run only if it started fewer than this in the last hour, runs started in churn mode included. Unset: 10. Other agents have none.",
             "format": "int32",
             "minimum": 1,
             "type": "integer"
@@ -4494,6 +4494,21 @@
         ],
         "type": "object"
       },
+      "Count": {
+        "description": "A name, key or value with about how many series carry it.",
+        "properties": {
+          "name": {
+            "description": "The name, key or value, exactly as stored.",
+            "type": "string"
+          },
+          "series": {
+            "description": "About how many series carry it: the largest count any hour saw.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "CoveredSignal": {
         "properties": {
           "fix": {
@@ -5477,11 +5492,6 @@
             "minLength": 0,
             "type": "string"
           },
-          "forwardSketchesAndServiceChecks": {
-            "default": false,
-            "description": "Whether Grepr forwards the Datadog agent\u0027s sketches (distributions) and service checks to Datadog, as the agent sent them. Turn it on only when Grepr is the only destination for those payloads; an agent that also sends them to Datadog directly already delivers them. Unset means off.",
-            "type": "boolean"
-          },
           "includeNeverViewedDashboards": {
             "default": true,
             "description": "When the active dashboard threshold is set, whether dashboards that were never viewed are still imported. Unset means they are.",
@@ -5705,6 +5715,11 @@
             "format": "ISO-8601",
             "type": "string"
           },
+          "handleNonMetricPayloads": {
+            "default": false,
+            "description": "Whether the source also handles the Datadog Agent\u0027s payloads other than metrics: its events, on the events output, and its host payloads, on the agent-payloads output.",
+            "type": "boolean"
+          },
           "identifyingKeys": {
             "default": [
               "env"
@@ -5749,7 +5764,7 @@
             "type": "array"
           },
           "softLateDeadline": {
-            "default": "PT20S",
+            "default": "PT15S",
             "description": "How long to wait for late points before a window\u0027s first send.",
             "example": "PT20.345S",
             "format": "ISO-8601",
@@ -5800,6 +5815,11 @@
             },
             "type": "array"
           },
+          "agentPayloads": {
+            "default": false,
+            "description": "Forward the Datadog Agent\u0027s events, service checks and host payloads, from the agent-payloads input, for the hosts this sink sends series for under their own names. Needs hostMetadata. A metrics reducer pipeline turns it on.",
+            "type": "boolean"
+          },
           "compression": {
             "default": "ZSTD1",
             "description": "How the sink compresses each request to Datadog: ZSTD1, zstd at level 1, as the Datadog agent sends it, or GZIP at zlib\u0027s default level.",
@@ -5828,11 +5848,6 @@
             "example": "operation_name",
             "pattern": "[a-z0-9_]{1,128}",
             "type": "string"
-          },
-          "orderedSends": {
-            "default": false,
-            "description": "Submit each series\u0027 points to Datadog in the order they come, never two requests carrying one series at once, so a window sent again goes out after its earlier send. A metrics reducer pipeline turns it on. The sink must read its producer directly, or through clones and unions only.",
-            "type": "boolean"
           },
           "sendQueue": {
             "$ref": "#/components/schemas/DatadogSendQueue"
@@ -5936,10 +5951,10 @@
         "type": "object"
       },
       "DatadogSendQueue": {
-        "description": "How a Datadog metrics sink with ordered sends queues and sends its series. Every field has a default.",
+        "description": "How a Datadog metrics sink queues and sends its series. A bounded job uses every field but retryDelay, maxRetryDelay and maxRetries. Every field has a default.",
         "properties": {
           "bufferTime": {
-            "default": "PT3S",
+            "default": "PT5S",
             "description": "How long a partial request waits for more series before it goes, from a millisecond to a day.",
             "example": "PT20.345S",
             "format": "ISO-8601",
@@ -5971,10 +5986,17 @@
             "type": "integer"
           },
           "maxRetries": {
-            "default": 3,
-            "description": "Attempts past the first before a point is dropped and logged, below 32767; -1 retries until Datadog takes it.",
+            "default": 61,
+            "description": "Attempts past the first before a point is dropped and logged, below 32767; -1 retries until Datadog takes it. At the default delays, 61 wait about an hour. While retrying, the sink holds back its input, so the whole job waits.",
             "format": "int32",
             "type": "integer"
+          },
+          "maxRetryDelay": {
+            "default": "PT1M4S",
+            "description": "The longest wait before a retry, from retryDelay to a day; a retry whose doubled wait passes it waits exactly this.",
+            "example": "PT20.345S",
+            "format": "ISO-8601",
+            "type": "string"
           },
           "maxSeriesBytes": {
             "default": 1000000,
@@ -5983,14 +6005,14 @@
             "type": "integer"
           },
           "requestsInFlight": {
-            "default": 5,
-            "description": "Requests in flight per sink subtask, never two carrying the same series.",
+            "default": 16,
+            "description": "Requests in flight per sink writer, never two carrying the same series. Each holds a thread until it ends, and its body during its call.",
             "format": "int32",
             "type": "integer"
           },
           "retryDelay": {
-            "default": "PT0.1S",
-            "description": "How long a retryable failure\u0027s points wait before they queue again, up to a day.",
+            "default": "PT4S",
+            "description": "The first retry\u0027s longest wait, up to a day: it waits between half of this and this, and each later retry doubles both, up to maxRetryDelay, as the Datadog Agent backs off. Zero retries at once.",
             "example": "PT20.345S",
             "format": "ISO-8601",
             "type": "string"
@@ -6289,7 +6311,8 @@
           "metrics_series",
           "metrics_recompute_markers",
           "spans_raw",
-          "spans_dedup"
+          "spans_dedup",
+          "events_raw"
         ],
         "type": "string"
       },
@@ -6346,45 +6369,6 @@
         "x-tags": [
           "Sinks"
         ]
-      },
-      "DoubleDatapoint": {
-        "properties": {
-          "metricName": {
-            "type": "string"
-          },
-          "metricType": {
-            "enum": [
-              "UNSPECIFIED_DOUBLE",
-              "GAUGE_DOUBLE",
-              "RATE_DOUBLE",
-              "COUNT_DOUBLE"
-            ],
-            "type": "string"
-          },
-          "tags": {
-            "additionalProperties": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array",
-              "uniqueItems": true
-            },
-            "type": "object"
-          },
-          "timestampMillis": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "timestampNanos": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "value": {
-            "format": "double",
-            "type": "number"
-          }
-        },
-        "type": "object"
       },
       "DropNode": {
         "description": "Terminal — discards every event reaching this node.",
@@ -6800,6 +6784,36 @@
           "jobState"
         ],
         "type": "object"
+      },
+      "EventsIcebergTableSink": {
+        "properties": {
+          "datasetId": {
+            "description": "The id of the dataset to write to",
+            "pattern": "[a-z0-9]{1,13}",
+            "type": "string"
+          },
+          "name": {
+            "example": "operation_name",
+            "pattern": "[a-z0-9_]{1,128}",
+            "type": "string"
+          },
+          "type": {
+            "description": "Writes the Datadog Agent\u0027s events to the events Iceberg table.",
+            "enum": [
+              "events-iceberg-table-sink"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "datasetId",
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "x-tags": [
+          "Sinks"
+        ]
       },
       "ExactAttributesMergeStrategy": {
         "properties": {
@@ -7250,74 +7264,6 @@
           "vertices"
         ],
         "type": "object"
-      },
-      "GreprMetricsSource": {
-        "properties": {
-          "additionalTags": {
-            "additionalProperties": {
-              "default": {},
-              "description": "Additional tags to add to the metrics while loading.",
-              "example": {
-                "metric_source": [
-                  "grepr"
-                ]
-              },
-              "items": {
-                "default": "{}",
-                "description": "Additional tags to add to the metrics while loading.",
-                "example": "{\"metric_source\":[\"grepr\"]}",
-                "type": "string"
-              },
-              "type": "array",
-              "uniqueItems": true
-            },
-            "default": {},
-            "description": "Additional tags to add to the metrics while loading.",
-            "example": {
-              "metric_source": [
-                "grepr"
-              ]
-            },
-            "type": "object"
-          },
-          "metrics": {
-            "default": [],
-            "description": "The list of metrics to load. Will load all possible metrics if nothing is specified",
-            "items": {
-              "enum": [
-                "table_totalBytes",
-                "job_operator_numRecordsIn",
-                "job_operator_numRecordsOut",
-                "job_operator_numRecordsInPerSecond",
-                "job_operator_numRecordsOutPerSecond",
-                "job_operator_numRecordsSend"
-              ],
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "type": {
-            "description": "Reads metric events from Grepr for processing.",
-            "enum": [
-              "grepr-metrics-source"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sources"
-        ]
       },
       "GreprPipe": {
         "description": "The payload containing integration data.",
@@ -7962,13 +7908,13 @@
         "properties": {
           "keys": {
             "default": [],
-            "description": "Tag keys that group objects into cohorts, such as env. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A key the source sends only as descriptive is absent: to group by a tag the source describes by default, declare it identifying at the source too. A series missing a key forms a cohort of its other keys\u0027 values. A rule that aggregates across objects writes each key back where the series had it, on its resource, its scope or itself, each object key with the cohort\u0027s id, the first series of a window deciding where its series differ, and carries the id as grepr.cohort, a series tag. The id is cohort_ followed by the cohort\u0027s pairs as key-value, sorted and joined by _, as in cohort_env-prod_service-api. A bare tag is its key alone; the id is the bare cohort when every key is absent, and cohort-default for a reducer without cohort keys.",
+            "description": "Tag keys that group objects into cohorts, such as env. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A key the source sends only as descriptive is absent: to group by a tag the source describes by default, declare it identifying at the source too. A series missing a key forms a cohort of its other keys\u0027 values. A rule that aggregates across objects writes each key back where the series had it, on its resource, its scope or itself, each object key with the cohort\u0027s id, the first series of a window deciding where its series differ, and carries the id as grepr.cohort, a series tag. The id is cohort_ followed by the cohort\u0027s pairs as key-value, sorted and joined by _, then _ and 6 characters (0-9a-z) of the pairs\u0027 hash, which tells apart pairs that render alike, as in cohort_env-prod_service-api_\u003chash\u003e. A long id\u0027s pairs are cut so that each tag it\u0027s written in fits Datadog\u0027s 200 characters, hash included. A bare tag is its key alone; the id is the bare cohort, with no hash, when every key is absent, and cohort-default for a reducer without cohort keys.",
             "example": [
               "env",
               "cluster"
             ],
             "items": {
-              "description": "Tag keys that group objects into cohorts, such as env. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A key the source sends only as descriptive is absent: to group by a tag the source describes by default, declare it identifying at the source too. A series missing a key forms a cohort of its other keys\u0027 values. A rule that aggregates across objects writes each key back where the series had it, on its resource, its scope or itself, each object key with the cohort\u0027s id, the first series of a window deciding where its series differ, and carries the id as grepr.cohort, a series tag. The id is cohort_ followed by the cohort\u0027s pairs as key-value, sorted and joined by _, as in cohort_env-prod_service-api. A bare tag is its key alone; the id is the bare cohort when every key is absent, and cohort-default for a reducer without cohort keys.",
+              "description": "Tag keys that group objects into cohorts, such as env. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A key the source sends only as descriptive is absent: to group by a tag the source describes by default, declare it identifying at the source too. A series missing a key forms a cohort of its other keys\u0027 values. A rule that aggregates across objects writes each key back where the series had it, on its resource, its scope or itself, each object key with the cohort\u0027s id, the first series of a window deciding where its series differ, and carries the id as grepr.cohort, a series tag. The id is cohort_ followed by the cohort\u0027s pairs as key-value, sorted and joined by _, then _ and 6 characters (0-9a-z) of the pairs\u0027 hash, which tells apart pairs that render alike, as in cohort_env-prod_service-api_\u003chash\u003e. A long id\u0027s pairs are cut so that each tag it\u0027s written in fits Datadog\u0027s 200 characters, hash included. A bare tag is its key alone; the id is the bare cohort, with no hash, when every key is absent, and cohort-default for a reducer without cohort keys.",
               "example": "[\"env\",\"cluster\"]",
               "type": "string"
             },
@@ -10271,6 +10217,34 @@
         "description": "A partial templateInputs object to deep-merge into the pipeline\u0027s current inputs. Objects merge recursively, and an array of named objects (like input.parsers) merges by entry name, so entries you omit are kept. Scalars and arrays of non-objects replace whole.",
         "type": "object"
       },
+      "Key": {
+        "description": "A tag key with its value count and its values on the most series.",
+        "properties": {
+          "key": {
+            "description": "The key, exactly as stored.",
+            "type": "string"
+          },
+          "series": {
+            "description": "About how many series carry the key.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "topValues": {
+            "default": [],
+            "description": "The key\u0027s values on the most series, most first.",
+            "items": {
+              "$ref": "#/components/schemas/Count"
+            },
+            "type": "array"
+          },
+          "values": {
+            "description": "About how many values the key takes; at least the values listed.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "LatestReadingStrategy": {
         "allOf": [
           {
@@ -10279,46 +10253,6 @@
         ],
         "description": "Strategy to read files created after the current job start time",
         "type": "object"
-      },
-      "LegacyDatadogMetricsSink": {
-        "properties": {
-          "additionalTags": {
-            "default": [],
-            "description": "Additional tags to add to the metrics when writing to Datadog. Gets combined with the integration\u0027s additionalTags.",
-            "example": [
-              "env:dev"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "integrationId": {
-            "description": "The Datadog integration id.",
-            "type": "string"
-          },
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "type": {
-            "description": "Writes processed metrics (flat MetricDatapoint model) to Datadog. Transitional; use datadog-metrics-sink for new pipelines.",
-            "enum": [
-              "legacy-datadog-metrics-sink"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "integrationId",
-          "name",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sinks"
-        ]
       },
       "LinkMemoryRequest": {
         "properties": {
@@ -12833,54 +12767,6 @@
         ],
         "type": "object"
       },
-      "MetricAggSpec": {
-        "description": "The metrics aggregation to apply to the source data.",
-        "properties": {
-          "groupByTags": {
-            "default": [],
-            "description": "The tags to group the results by. If unspecified, all series are grouped together. Only applicable when spaceAggregation is set.",
-            "example": [
-              "service",
-              "env"
-            ],
-            "items": {
-              "description": "The tags to group the results by. If unspecified, all series are grouped together. Only applicable when spaceAggregation is set.",
-              "example": "[\"service\",\"env\"]",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "spaceAggregation": {
-            "description": "The space aggregation to use for the query. If null, no grouping is done and the timeseries are returned with full tags.",
-            "enum": [
-              "LATEST",
-              "SUM",
-              "AVG",
-              "MAX"
-            ],
-            "example": "AVG",
-            "type": "string"
-          },
-          "timeAggregation": {
-            "description": "The time aggregation to use for the query. If this is set, timeGranularity must also be provided. If null, no time aggregation is done and the raw datapoints are returned.",
-            "enum": [
-              "LATEST",
-              "SUM",
-              "AVG",
-              "MAX"
-            ],
-            "example": "AVG",
-            "type": "string"
-          },
-          "timeGranularity": {
-            "description": "The time granularity to use for the query. Only applicable when timeAggregation is set.",
-            "example": "PT20.345S",
-            "format": "ISO-8601",
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
       "MetricAggregation": {
         "description": "One aggregation declaration inside an anomaly rule.",
         "properties": {
@@ -13014,6 +12900,29 @@
         ],
         "type": "object"
       },
+      "MetricKeysResponse": {
+        "description": "The named metrics\u0027 tag keys in a metrics dataset, for autofill.",
+        "properties": {
+          "day": {
+            "description": "The UTC day the keys are from; absent when the dataset has no suggestions yet.",
+            "format": "date",
+            "type": "string"
+          },
+          "metricKeys": {
+            "additionalProperties": {
+              "description": "Each named metric\u0027s tag keys, most series first.",
+              "items": {
+                "$ref": "#/components/schemas/Count"
+              },
+              "type": "array"
+            },
+            "default": {},
+            "description": "Each named metric\u0027s tag keys, most series first.",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
       "MetricNameFilter": {
         "description": "Filter on metric names: globs, or RE2 regexes after r/ that match the whole name.",
         "properties": {
@@ -13110,7 +13019,7 @@
             "type": "array"
           },
           "softLateDeadline": {
-            "default": "PT2S",
+            "default": "PT15S",
             "description": "How long to wait for late points before a window\u0027s first send.",
             "example": "PT20.345S",
             "format": "ISO-8601",
@@ -13166,6 +13075,33 @@
           "pattern",
           "replacement"
         ],
+        "type": "object"
+      },
+      "MetricSuggestionsResponse": {
+        "description": "A metrics dataset\u0027s metric names, tag keys and values, for autofill.",
+        "properties": {
+          "day": {
+            "description": "The UTC day the suggestions are from; absent when the dataset has none yet.",
+            "format": "date",
+            "type": "string"
+          },
+          "keys": {
+            "default": [],
+            "description": "The dataset\u0027s tag keys, most series first.",
+            "items": {
+              "$ref": "#/components/schemas/Key"
+            },
+            "type": "array"
+          },
+          "names": {
+            "default": [],
+            "description": "The metric names, most series first.",
+            "items": {
+              "$ref": "#/components/schemas/Count"
+            },
+            "type": "array"
+          }
+        },
         "type": "object"
       },
       "MetricsBackfillSource": {
@@ -13256,123 +13192,6 @@
         "title": "Inputs Schema",
         "type": "object"
       },
-      "MetricsIcebergTableSink": {
-        "properties": {
-          "datasetId": {
-            "description": "The id of the dataset to write to",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
-          },
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "type": {
-            "description": "Writes metrics to an Iceberg table.",
-            "enum": [
-              "metrics-iceberg-table-sink"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "datasetId",
-          "name",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sinks"
-        ]
-      },
-      "MetricsIcebergTableSource": {
-        "properties": {
-          "aggSpec": {
-            "$ref": "#/components/schemas/MetricAggSpec"
-          },
-          "datasetId": {
-            "description": "The ID of the dataset to read data from.",
-            "pattern": "[a-z0-9]{1,13}",
-            "type": "string"
-          },
-          "end": {
-            "description": "End of time interval to query data for.",
-            "example": "2023-01-01T01:00:00Z",
-            "format": "date-time",
-            "type": "string"
-          },
-          "limit": {
-            "default": 2500,
-            "description": "The maximum number of rows to process",
-            "format": "int32",
-            "type": "integer"
-          },
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "offset": {
-            "default": 0,
-            "description": "Offset on the number of rows to process",
-            "format": "int32",
-            "minimum": 0,
-            "type": "integer"
-          },
-          "query": {
-            "$ref": "#/components/schemas/query"
-          },
-          "sortOrder": {
-            "default": "ASCENDING",
-            "description": "The order in which the rows should be sorted by",
-            "enum": [
-              "ASCENDING",
-              "DESCENDING",
-              "UNSORTED"
-            ],
-            "type": "string"
-          },
-          "start": {
-            "description": "Start of time interval to query data for.",
-            "example": "2023-01-01T00:00:00Z",
-            "format": "date-time",
-            "type": "string"
-          },
-          "type": {
-            "description": "Reads metrics out of an Iceberg Table for processing.",
-            "enum": [
-              "metrics-iceberg-table-source"
-            ],
-            "type": "string"
-          },
-          "variables": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/Any"
-            },
-            "default": {},
-            "description": "Variables that can be used to modify the query while parsed",
-            "example": {
-              "__application": "app1",
-              "__service": "service1"
-            },
-            "type": "object"
-          }
-        },
-        "required": [
-          "aggSpec",
-          "datasetId",
-          "end",
-          "name",
-          "query",
-          "start",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sources"
-        ]
-      },
       "MetricsLakeSink": {
         "properties": {
           "datasetId": {
@@ -13389,6 +13208,30 @@
             "default": false,
             "description": "Also write the recompute markers of very late windows, from a markers input. A metrics reducer pipeline with recompute on turns it on.",
             "type": "boolean"
+          },
+          "sketchMaxCentroids": {
+            "description": "The most centroids each distribution point\u0027s t-digest keeps: absent or 0 keeps one for each bin of the sketch; otherwise any integer from 32 to 4096. Fewer centroids take fewer bytes and make percentiles less precise. A change applies to the points written after it, within 30 seconds, without a restart.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "sketchMode": {
+            "description": "What the lake\u0027s points table keeps of each distribution point besides its count, sum, average, min and max: SUMMARY keeps nothing more; PERCENTILES keeps its p50, p90, p95 and p99, in the columns sketch_p50 to sketch_p99; T_DIGEST keeps its sketch as a t-digest, capped by sketchMaxCentroids. Absent means T_DIGEST, what a lake kept before the setting. A change applies to the points written after it, within 30 seconds, without a restart; points already written keep their own.",
+            "enum": [
+              "SUMMARY",
+              "PERCENTILES",
+              "T_DIGEST"
+            ],
+            "type": "string"
+          },
+          "sketchOverrides": {
+            "default": [],
+            "description": "How the lake stores the distribution points of chosen metrics, in place of sketchMode and sketchMaxCentroids. A point takes the first override its metric\u0027s name matches; one that matches none takes the lake\u0027s own. At most 100. A change applies to the points written after it, within 30 seconds, without a restart.",
+            "items": {
+              "$ref": "#/components/schemas/SketchOverride"
+            },
+            "maxItems": 100,
+            "minItems": 0,
+            "type": "array"
           },
           "type": {
             "description": "Writes every raw point of a v3 metrics source into its dataset\u0027s metrics lake.",
@@ -13498,6 +13341,29 @@
             "minItems": 1,
             "type": "array"
           },
+          "sketchMaxCentroids": {
+            "description": "The most centroids each of the lake\u0027s t-digests keeps: absent or 0 keeps one for each bin of the sketch; otherwise any integer from 32 to 4096. With datasetId. Changes without a restart.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "sketchMode": {
+            "description": "What the lake keeps of each distribution point besides its count, sum, average, min and max: SUMMARY, PERCENTILES (its p50, p90, p95 and p99) or T_DIGEST. With datasetId. Absent, the lake keeps t-digests. Changes without a restart.",
+            "enum": [
+              "SUMMARY",
+              "PERCENTILES",
+              "T_DIGEST"
+            ],
+            "type": "string"
+          },
+          "sketchOverrides": {
+            "description": "How the lake stores the distribution points of chosen metrics, in place of sketchMode and sketchMaxCentroids: a point takes the first override its metric\u0027s name matches, and one that matches none takes the lake\u0027s own. At most 100. With datasetId. Absent means none. Changes without a restart.",
+            "items": {
+              "$ref": "#/components/schemas/SketchOverride"
+            },
+            "maxItems": 100,
+            "minItems": 0,
+            "type": "array"
+          },
           "source": {
             "$ref": "#/components/schemas/MetricsTemplateSource"
           },
@@ -13541,30 +13407,6 @@
           "PERCENTILE"
         ],
         "type": "string"
-      },
-      "MetricsSynchronousSink": {
-        "properties": {
-          "name": {
-            "example": "operation_name",
-            "pattern": "[a-z0-9_]{1,128}",
-            "type": "string"
-          },
-          "type": {
-            "description": "Sink for returning metric results to the caller.",
-            "enum": [
-              "metrics-sync-sink"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "type"
-        ],
-        "type": "object",
-        "x-tags": [
-          "Sinks"
-        ]
       },
       "MetricsTemplateGraphEdgeOverrides": {
         "description": "Edges to remove, then edges to add, each as from[:port] -\u003e to[:port].",
@@ -13640,7 +13482,7 @@
             "type": "boolean"
           },
           "softLateDeadline": {
-            "description": "How long after a window ends the reducer first sends it, and how often it re-sends a window a late point changed: the source\u0027s wait for late points and the reducer\u0027s softLateDeadline, both. It must be positive and under the reducer\u0027s lateDataMinWait, which the template sets to 30 s. Absent, 2 s.",
+            "description": "How long after a window ends the reducer first sends it, and how often it re-sends a window a late point changed: the source\u0027s wait for late points and the reducer\u0027s softLateDeadline, both. It must be positive and under the reducer\u0027s lateDataMinWait, which the template sets to 30 s. Absent, 15 s; shorter sends windows sooner, and more often.",
             "example": "PT20.345S",
             "format": "ISO-8601",
             "type": "string"
@@ -14092,13 +13934,15 @@
         "properties": {
           "identifyingAttributes": {
             "default": [],
-            "description": "Tag keys that identify an object, such as host. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A rule that aggregates across objects writes each where the series had it with the cohort\u0027s id, such as cohort_service-api (see groupBy.keys).",
+            "description": "Tag keys that identify an object, such as host. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A rule that aggregates across objects writes each where the series had it with the cohort\u0027s id, such as cohort_service-api_\u003chash\u003e (see groupBy.keys).",
             "example": [
               "host"
             ],
             "items": {
-              "description": "Tag keys that identify an object, such as host. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A rule that aggregates across objects writes each where the series had it with the cohort\u0027s id, such as cohort_service-api (see groupBy.keys).",
+              "description": "Tag keys that identify an object, such as host. Each reads a series\u0027 merged attributes: its own tags, then its scope\u0027s, then its resource\u0027s, a tag the source identifies by winning over one it only describes by. A rule that aggregates across objects writes each where the series had it with the cohort\u0027s id, such as cohort_service-api_\u003chash\u003e (see groupBy.keys).",
               "example": "[\"host\"]",
+              "maxLength": 186,
+              "minLength": 0,
               "type": "string"
             },
             "maxItems": 2147483647,
@@ -14180,8 +14024,8 @@
             "datadog-trace-sink": "#/components/schemas/DatadogTraceSink",
             "discarding-sink": "#/components/schemas/DiscardingSink",
             "event-dedup-iceberg-table-sink": "#/components/schemas/EventDedupIcebergTableSink",
+            "events-iceberg-table-sink": "#/components/schemas/EventsIcebergTableSink",
             "geoip-parser": "#/components/schemas/GeoIpParser",
-            "grepr-metrics-source": "#/components/schemas/GreprMetricsSource",
             "grepr-pipe-log-sink": "#/components/schemas/GreprPipeLogSink",
             "grepr-pipe-log-source": "#/components/schemas/GreprPipeLogSource",
             "grepr-raw-log-source": "#/components/schemas/GreprRawLogsSource",
@@ -14190,7 +14034,6 @@
             "grepr-uploaded-log-file-source": "#/components/schemas/GreprUploadedLogFileSource",
             "grok-parser": "#/components/schemas/GrokParser",
             "json-log-processor": "#/components/schemas/JsonLogProcessor",
-            "legacy-datadog-metrics-sink": "#/components/schemas/LegacyDatadogMetricsSink",
             "log-attributes-remapper": "#/components/schemas/LogAttributesRemapper",
             "log-reducer": "#/components/schemas/LogReducer",
             "log-rules-application": "#/components/schemas/LogRulesApplication",
@@ -14207,10 +14050,7 @@
             "masking-operator": "#/components/schemas/MaskingOperator",
             "metric-reducer": "#/components/schemas/MetricReducer",
             "metrics-backfill-source": "#/components/schemas/MetricsBackfillSource",
-            "metrics-iceberg-table-sink": "#/components/schemas/MetricsIcebergTableSink",
-            "metrics-iceberg-table-source": "#/components/schemas/MetricsIcebergTableSource",
             "metrics-lake-sink": "#/components/schemas/MetricsLakeSink",
-            "metrics-sync-sink": "#/components/schemas/MetricsSynchronousSink",
             "multi-grok-parser": "#/components/schemas/MultiGrokParser",
             "newrelic-log-agent-source": "#/components/schemas/NewRelicLogAgentSource",
             "newrelic-log-sink": "#/components/schemas/NewRelicLogSink",
@@ -14317,6 +14157,9 @@
             "$ref": "#/components/schemas/SpansIcebergTableSink"
           },
           {
+            "$ref": "#/components/schemas/EventsIcebergTableSink"
+          },
+          {
             "$ref": "#/components/schemas/LogsIcebergTableSource"
           },
           {
@@ -14326,16 +14169,10 @@
             "$ref": "#/components/schemas/AgentSessionEventsIcebergTableSource"
           },
           {
-            "$ref": "#/components/schemas/MetricsIcebergTableSource"
-          },
-          {
             "$ref": "#/components/schemas/TracesIcebergTableSource"
           },
           {
             "$ref": "#/components/schemas/SpansBackfillIcebergTableSource"
-          },
-          {
-            "$ref": "#/components/schemas/MetricsIcebergTableSink"
           },
           {
             "$ref": "#/components/schemas/DatadogLogCloudSource"
@@ -14348,9 +14185,6 @@
           },
           {
             "$ref": "#/components/schemas/GreprVendorSource"
-          },
-          {
-            "$ref": "#/components/schemas/GreprMetricsSource"
           },
           {
             "$ref": "#/components/schemas/DatadogLogSink"
@@ -14398,9 +14232,6 @@
             "$ref": "#/components/schemas/AgentSessionsSynchronousSink"
           },
           {
-            "$ref": "#/components/schemas/MetricsSynchronousSink"
-          },
-          {
             "$ref": "#/components/schemas/VariantSynchronousSink"
           },
           {
@@ -14423,9 +14254,6 @@
           },
           {
             "$ref": "#/components/schemas/DatadogMetricsSink"
-          },
-          {
-            "$ref": "#/components/schemas/LegacyDatadogMetricsSink"
           },
           {
             "$ref": "#/components/schemas/AnalyticsSource"
@@ -16224,6 +16052,74 @@
           "Sinks"
         ]
       },
+      "QueryToken": {
+        "description": "The filter\u0027s tokens, in order. Offsets are character offsets, which index a JavaScript string the same way.",
+        "properties": {
+          "end": {
+            "description": "The offset past the token\u0027s last character in the filter.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "A filter token\u0027s kind. TERM: a term, a value or a number. QUOTED: a quoted phrase. COLON: a field\u0027s qualifier, : or \u003d. COMPARE: \u003c, \u003e, \u003c\u003d or \u003e\u003d, which take a field and a bound. OPEN and CLOSE: parentheses. RANGE: a whole range, from its opening bracket or brace to its closing one, or to the end. PREFIX: - or +. OPERATOR: AND, OR or NOT, ! and !\u003d included.",
+            "enum": [
+              "TERM",
+              "QUOTED",
+              "COLON",
+              "COMPARE",
+              "OPEN",
+              "CLOSE",
+              "RANGE",
+              "PREFIX",
+              "OPERATOR"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "description": "The offset of the token\u0027s first character in the filter, from 0.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "end",
+          "kind",
+          "start"
+        ],
+        "type": "object"
+      },
+      "QueryTokensRequest": {
+        "properties": {
+          "query": {
+            "$ref": "#/components/schemas/EventPredicate"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "QueryTokensResponse": {
+        "properties": {
+          "error": {
+            "description": "Whether lexing stopped at an unclosed quote or a character the grammar refuses, so the tokens end before the filter does.",
+            "type": "boolean"
+          },
+          "tokens": {
+            "default": [],
+            "description": "The filter\u0027s tokens, in order. Offsets are character offsets, which index a JavaScript string the same way.",
+            "items": {
+              "$ref": "#/components/schemas/QueryToken"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "error",
+          "tokens"
+        ],
+        "type": "object"
+      },
       "RawLogsSinkConfig": {
         "description": "Optional configuration overrides for the raw logs sink.",
         "properties": {
@@ -16259,7 +16155,6 @@
             "items": {
               "enum": [
                 "DATADOG_BROWSER_LOGS_INTEGRATION",
-                "METRICS_SOURCE",
                 "S3_LOGS_FILE_SOURCE",
                 "AI_WORKFLOWS",
                 "SEARCH_ICEBERG_SOURCE",
@@ -18192,7 +18087,6 @@
           "mapping": {
             "agent-session-summary": "#/components/schemas/AgentSessionSummary",
             "complete_span": "#/components/schemas/CompleteSpan",
-            "double-datapoint": "#/components/schemas/DoubleDatapoint",
             "log": "#/components/schemas/LogEvent",
             "metricdata": "#/components/schemas/MetricData",
             "variant_event": "#/components/schemas/VariantEvent"
@@ -18202,9 +18096,6 @@
         "oneOf": [
           {
             "$ref": "#/components/schemas/LogEvent"
-          },
-          {
-            "$ref": "#/components/schemas/DoubleDatapoint"
           },
           {
             "$ref": "#/components/schemas/CompleteSpan"
@@ -19258,6 +19149,37 @@
           "orgName",
           "reCaptchaToken",
           "user"
+        ],
+        "type": "object"
+      },
+      "SketchOverride": {
+        "description": "How the lake stores the distribution points of the metrics a name pattern matches, in place of its own storage.",
+        "properties": {
+          "maxCentroids": {
+            "description": "The most centroids each matched point\u0027s t-digest keeps: 0 keeps one for each bin of the sketch; otherwise any integer from 32 to 4096. Absent, the lake\u0027s own cap applies, and follows it when it changes.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "metricName": {
+            "description": "The metric names it applies to, case-sensitively, after any source renames: a glob, where * matches any run of characters and a pattern without one is an exact name, or an RE2 regex after r/ that matches the whole name.",
+            "example": "http.server.*",
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "mode": {
+            "description": "What the lake keeps of each matched distribution point besides its count, sum, average, min and max: SUMMARY, PERCENTILES (its p50, p90, p95 and p99) or T_DIGEST.",
+            "enum": [
+              "SUMMARY",
+              "PERCENTILES",
+              "T_DIGEST"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "metricName",
+          "mode"
         ],
         "type": "object"
       },
@@ -28301,6 +28223,105 @@
           }
         ],
         "summary": "Create or update dataset impact estimation configuration",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
+    "/v1/datasets/{id}/metric-suggestions": {
+      "get": {
+        "description": "Get a metrics dataset\u0027s metric names, tag keys and values, for autofill. Refreshed hourly from the dataset\u0027s lake.",
+        "operationId": "getMetricSuggestions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricSuggestionsResponse"
+                }
+              }
+            },
+            "description": "The suggestions; empty lists when the dataset has none yet."
+          },
+          "404": {
+            "description": "Dataset not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get a metrics dataset\u0027s suggestions",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
+    "/v1/datasets/{id}/metric-suggestions/metric-keys": {
+      "get": {
+        "description": "Get the named metrics\u0027 tag keys in a metrics dataset, for autofill. Refreshed hourly from the dataset\u0027s lake.",
+        "operationId": "getMetricKeys",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The metrics whose tag keys to read, at most 50.",
+            "in": "query",
+            "name": "metric",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 50,
+              "minItems": 0,
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricKeysResponse"
+                }
+              }
+            },
+            "description": "The keys; no entry for a metric the suggestions don\u0027t hold."
+          },
+          "404": {
+            "description": "Dataset not found."
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Get the named metrics\u0027 tag keys",
         "tags": [
           "Datasets"
         ]
@@ -39290,6 +39311,51 @@
           }
         ],
         "summary": "Parses a query",
+        "tags": [
+          "Query Parsing"
+        ]
+      }
+    },
+    "/v1/query/tokens": {
+      "post": {
+        "description": "Returns a Datadog filter\u0027s tokens, each with its kind and character offsets, as the query grammar\u0027s own lexer reads them. A half-typed filter lexes, since nothing is parsed. At an unclosed quote or a character the grammar refuses, the tokens before it come back with error set. Only a Datadog query has tokens; a filter over 10,000 characters is refused.",
+        "operationId": "tokens",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryTokensRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryTokensResponse"
+                }
+              }
+            },
+            "description": "The filter\u0027s tokens."
+          },
+          "400": {
+            "description": "The query isn\u0027t a Datadog query, or the filter is too long."
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "grepr-api-key": []
+          },
+          {
+            "grepr-oidc": []
+          }
+        ],
+        "summary": "Lexes a filter",
         "tags": [
           "Query Parsing"
         ]
