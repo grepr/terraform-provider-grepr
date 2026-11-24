@@ -432,6 +432,12 @@
             "minimum": 1,
             "type": "integer"
           },
+          "churnRunPerMinute": {
+            "description": "Churn specialist only, when runOutsideChurnMode is off: it starts runs on a pipeline in churn mode only once the pipeline's measured signals per minute (15-minute average) is at or above this. Unset: any rate.",
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
           "codeMode": {
             "description": "OpenCode\u0027s experimental code mode: the model calls MCP tools from code through one tool instead of seeing each tool\u0027s schema; null or false is off.",
             "type": "boolean"
@@ -567,6 +573,12 @@
           },
           "churnHoldPerMinute": {
             "description": "Signals per minute, averaged over 15 minutes, at or above which this agent\u0027s runs on a churning pipeline are held. Unset: 15 with the decision step, 5 without.",
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "churnRunPerMinute": {
+            "description": "Churn specialist only, when runOutsideChurnMode is off: it starts runs on a pipeline in churn mode only once the pipeline's measured signals per minute (15-minute average) is at or above this. Unset: any rate.",
             "format": "int32",
             "minimum": 1,
             "type": "integer"
