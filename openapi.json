@@ -14921,7 +14921,7 @@
         "description": "User-chosen partition fields applied in order.",
         "properties": {
           "buckets": {
-            "description": "Number of buckets to hash this column into.",
+            "description": "Number of buckets to hash this column into. For metrics_points and metrics_series, use about 64 for each 5M points/s of the dataset\u0027s peak load, rounded up to a power of two, at most 256; the default, 4, fits up to about 300k points/s. A metrics table\u0027s count can\u0027t change while any pipeline uses the dataset, stopped or failed ones included, so set it before the first pipeline.",
             "format": "int32",
             "maximum": 256,
             "minimum": 2,
@@ -27996,7 +27996,7 @@
             "description": "Dataset not found."
           },
           "409": {
-            "description": "Dataset has jobs associated with it."
+            "description": "Dataset is used by a pipeline, stopped and failed ones included."
           }
         },
         "security": [
